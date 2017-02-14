@@ -61,3 +61,42 @@ NoSQL解决方案具有定制API，从而导致定制架构，应用程序和工
   Vitess工具和服务器主要是帮助您是从一个完整的数据库实现开始还是基于最小实现，然后随着时间的推移逐步扩展。对于最小实现，vttablet的特性连接池和查询重写可以帮助我们在当前已经存在的机器上获取更大的性能；Vitess自动化工具对于大型项目可以提供更好的支持。
   下图是Vitess的结构图：
   ![Vitess结构图](https://github.com/davygeek/vitessdoc/blob/master/res/vitess_architecture.png)
+
+## Topology
+  拓扑服务是元数据存储服务包含有关运行服务器的信息，数据库分片信息和数据复制拓扑图；拓扑服务是基于一致性数据存储引擎。 您可以使用vtctl（命令行）和vtctld（web）来查看系统的拓扑结构数据。  
+  在Kubernetes中，元数据存储是etcd， 同时在Vitess源代码也附带Apache ZooKeeper支持。
+
+## vtgate
+  vtgate是一个轻量级的代理服务器，他可以把数据路由到正确的vttablet服务并且将合并的结果返回给客户端；他是应用程序发送查询的服务器。所以，客户端可以非常简单，因为它只需要能够找到一个vtgate实例即可。  
+  对于路由查询，vtgate考虑分片方案，所需的延迟以及tablets和底层数据库的可用性。
+
+## vttablet
+  vttablet是一个位于MySQL数据库前面的代理服务器；Vitess实现是每个MySQL实例都对应有一个vttablet进程。  
+  vttablet执行任务的时候尝试最大化吞吐量同时对于有害查询的任务会保护MySQL；其功能包括连接池、查询重写、查询去重。另外，可以通过vtctl对vttablet发起管理任务，它提供用于过滤复制和数据导出的流服务。  
+  轻量级的Vitess实现使用vttablet作为单个MySQL数据库查询的智能连接代理。通过在MySQL数据库前运行vttablet并且更改您的应用程序以使用Vitess客户端，而不是您的MySQL驱动程序；vttablet的连接池、查询重写、查询去重这些特性会给你的应用带来很多好处。
+
+## vtctl
+  vtctl是一个用来管理Vitess集群的命令行工具；它允许人或应用程序轻松地与Vitess实现交互。使用vtctl你可以识别数据库的主从关系，创建表，启动故障切换，执行分片（和重新分片）操作等。vtctl执行操作时它会根据需要更新锁服务器；其他Vitess服务器会观察这些更改并相应做出反应。例如：如果使用vtctl故障切换到新的主数据库，vtgate会获取到更改并将后续的写操作指向新的主节点。
+
+## vtctld
+  vtctld是一个HTTP服务器，它允许您浏览存储在锁服务器中的信息,它对于故障排除或者获取服务器更高级概述及其当前状态的非常有用。
+
+## vtworker
+  vtworker托管长时间运行的进程，它支持插件架构并且提供库，以便您可以轻松地选择使用tablets。插件适用于以下类型的工作：
+  * resharding differ - resharding后校验数据完整性
+  * vertical split differ - 垂直拆分后校验数据完整性
+vtworker还允许您轻松添加其他验证过程，您可以进行片内完整性检查，以验证外键式关系或交叉分片完整性检查。例如：一个keyspace中的索引表在另一个keyspace中的参考数据。
+
+## 其他支持工具
+  Vitess还包括以下工具：  
+  * mysqlctl: 管理MySQL实例
+  * zk: ZooKeeper命令行客户端和浏览器
+  * zkctl: 管理ZooKeeper实例
+
+# 历史
+  自2011年以来，Vitess一直是YouTube基础设施的基本组成部分，本节简要总结了导致Vitess创建的事件序列：  
+  1. YouTube的MySQL数据库达到了一个点，当高峰流量将很快超过数据库的服务容量，为了暂时缓解这个问题，YouTube为写入流量创建了主数据库，为读取流量创建了一个副本数据库。
+  2. 随着对cat视频的需求达到一个历史最高点，只读流量仍然高到足以使副本数据库过载。因此，YouTube添加了更多副本，再次提供了一个临时解决方案。
+  3. 最终，写流量变得太高，以至于master数据库无法处理；要求YouTube分割数据以处理传入的流量，
+
+# 开源第一
