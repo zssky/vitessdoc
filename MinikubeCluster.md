@@ -108,7 +108,7 @@ $ minikube start --v=7 --vm-driver=kvm
 
 ## 集群操作常用命令
 ### kubectl相关
-1. 关键词概念  
+* 关键词概念  
 [Pods](https://www.kubernetes.org.cn/kubernetes-pod)  
 [Labels](https://www.kubernetes.org.cn/kubernetes-labels)  
 [Replication Controller](https://www.kubernetes.org.cn/replication-controller-kubernetes)  
@@ -116,7 +116,7 @@ $ minikube start --v=7 --vm-driver=kvm
 [Volumes](https://www.kubernetes.org.cn/kubernetes-volumes)  
 [kubectl命令详细说明](https://www.kubernetes.org.cn/doc-45)  
 
-２. 获取pod列表  
+* 获取pod列表  
 ``` sh
 # 命令会返回当前kubernetes 已经创建的pods列表，主要会显示以下信息
 # NAME                    READY     STATUS    RESTARTS   AGE
@@ -127,31 +127,31 @@ $ kubectl get pod
 # etcd-global-psj52       1/1       Running   0          2d
 ```
 
-３. 查看pod详细信息  
+* 查看pod详细信息  
 ``` sh
 # 使用pod名称查看pod的详细信息, 主要是容器的详细信息
 $ kubectl describe pod etcd-global-9002d
 ```  
-４. 查询部署列表  
+* 查询部署列表  
 ``` sh
 # 获取部署列表
 $ kubectl get deployment
 ```
-5. 删除部署
+* 删除部署
 ``` sh
 # 删除名称为etcd-minikube的部署
 $ kubectl delete deployment etcd-minikube
 ```
 
 ### 容器相关
-1. 拉取容器镜像  
+* 拉取容器镜像  
 ``` sh
 # 拉取远端名称为test的镜像
 $ docker pull test
 # docker pull vitess/etcd:v2.0.13-lite
 # docker pull vitess/lite
 ```
-2. 查看容器列表  
+* 查看容器列表  
 ``` sh
 # 查看当前启动的容器列表
 $ docker ps
@@ -159,19 +159,19 @@ $ docker ps
 # 返回以下信息
 # CONTAINER ID IMAGE COMMAND CREATED STATUS PORTS NAMES
 ```
-3. 登录容器  
+* 登录容器  
 ``` sh
 # 通过容器ID登录容器
 $ docker exec -it 容器ID /bin/bash　
 # docker exec -it 66f92ed4befb /bin/bash
 ```
-4. 保存容器镜像  
+* 保存容器镜像  
 ``` sh
 # 保存已经下载下来的容器到文件，xxx是镜像名称(REPOSITORY)　
 $ docker save -o xxx.tar xxx  
 ```
 
-5. 加载镜像  
+* 加载镜像  
 ``` sh
 # 加载导出的镜像文件
 $ docker load --input xxx.tar
@@ -183,35 +183,35 @@ $ ls -l | awk -F ' ' '{print "docker load --input="$NF}' | sh
 
 ### kvm相关
 kvm命令也很多，下面介绍部分命令，详细的命令信息可以参见virsh -h
-1. 启动虚拟机  
+* 启动虚拟机  
 ``` sh
 ### 启动已经创建的虚拟机xxxx
 $ virsh start xxxx
 ```
 
-2. 暂停虚拟机
+* 暂停虚拟机
 ``` sh
 #  暂停正在运行的虚拟机xxx
 $ virsh suspend xxxx
 ```
 
-3. 设置虚拟机内存
+* 设置虚拟机内存
 ``` sh
 # 修改内存
 $ virsh setmem xxxxx 512000
 ```
-4. 恢复挂起(暂停)的虚拟机
+* 恢复挂起(暂停)的虚拟机
 ``` sh
 $ virsh resume xxxx
 ```
-5. 修改虚拟机配置文件
+* 修改虚拟机配置文件
   上面所说的修改内存还有一种方法是可以直接修改运行中的虚拟机的配置文件，以达到修改对应参数的效果，修改配置文件相对于其他命令来说比较好用，kvm虚拟机配置都是以xml格式配置的，我们可以使用virsh edit直接修改。
   ``` sh
   # 使用如下命令就会显示配置文件编辑窗口，对应的ｘｍｌ文件记录了虚拟机的各种参数，　修改完成重启虚拟机即可生效
   $ virsh edit xxxx
   ```
 
-6. 其他
+* 其他
   在使用minikube通过kvm创建虚拟机的时候，文件virbr1.status记录着对应的ip信息，如果出现ip冲突可以修改以下文件进行处理，保证以下文件只有一个唯一的ip即可。
 ``` sh
 $ vim /var/lib/libvirt/dnsmasq/virbr1.status
