@@ -1,8 +1,11 @@
 # 基于minikube的kubernetes集群搭建
 
 ## 简介
-[minikube](https://github.com/kubernetes/minikube/blob/v0.16.0/README.md)是一个可以很容易本地运行Kubernetes集群的工具,
-minikube在电脑上的虚拟机内运行单节点Kubernetes集群，可以很方便的供Kubernetes日常开发使用；minikube在Linux下是会用需要依赖[VirtualBox](https://www.virtualbox.org/wiki/Downloads)或者[KVM](http://www.linux-kvm.org/)，本文中所说的是基于KVM驱动搭建单机集群环境。
+[minikube](https://github.com/kubernetes/minikube/blob/v0.16.0/README.md)是一个可以很容易在本地运行Kubernetes集群的工具,
+minikube在电脑上的虚拟机内运行单节点Kubernetes集群，可以很方便的供Kubernetes日常开发使用；minikube在Linux下是会用需要依赖[VirtualBox](https://www.virtualbox.org/wiki/Downloads)或者[KVM](http://www.linux-kvm.org/)，本文中所说的是基于KVM驱动搭建单机集群环境。  
+minikube运行的大致结构如下：  
+![Alt text](https://github.com/davygeek/vitessdoc/blob/master/res/minikube_struct.png)
+
 
 ## 环境搭建
 ### minikube安装
