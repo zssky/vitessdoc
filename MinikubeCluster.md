@@ -219,3 +219,7 @@ $ virsh resume xxxx
 ``` sh
 $ vim /var/lib/libvirt/dnsmasq/virbr1.status
 ```
+
+## 其他
+  [Kubernetes中文文档](https://www.kubernetes.org.cn/k8s)  
+  
