@@ -2,7 +2,7 @@
 
 ## 简介
 [minikube](https://github.com/kubernetes/minikube/blob/v0.16.0/README.md)是一个可以很容易在本地运行Kubernetes集群的工具,
-minikube在电脑上的虚拟机内运行单节点Kubernetes集群，可以很方便的供Kubernetes日常开发使用；minikube在Linux下是会用需要依赖[VirtualBox](https://www.virtualbox.org/wiki/Downloads)或者[KVM](http://www.linux-kvm.org/)，本文中所说的是基于KVM驱动搭建单机集群环境。  
+minikube在电脑上的虚拟机内运行单节点Kubernetes集群，可以很方便的供Kubernetes日常开发使用；minikube在Linux下是部署需要依赖[VirtualBox](https://www.virtualbox.org/wiki/Downloads)或者[KVM](http://www.linux-kvm.org/)，本文中所说的是基于KVM驱动搭建单机集群环境。  
 minikube运行的大致结构如下：  
 ![Alt text](https://github.com/davygeek/vitessdoc/blob/master/res/minikube_struct.png)
 
@@ -89,7 +89,7 @@ $ minikube -h
 ``` sh
 # 正常启动minikube服务，指定驱动；不开启日志
 # --vm 参数指定了需要使用的驱动程序， linux下默认使用的是virtualbox程序来启动， 由于virtualbox操作安装问题较多，所以这里选用了kvm
-# 可以借助kvm强大的命令行工具集合来操作方便快捷
+# 可以借助kvm强大的命令行工具集合来操作, 方便快捷
 $ minikube start --vm-driver=kvm
 ```
 
@@ -222,4 +222,3 @@ $ vim /var/lib/libvirt/dnsmasq/virbr1.status
 
 ## 其他
   [Kubernetes中文文档](https://www.kubernetes.org.cn/k8s)  
-  
