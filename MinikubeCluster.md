@@ -20,9 +20,7 @@ $ mv minikube-linux-amd64 /usr/local/bin/minikube
 # 查看版本确认是否安装成功
 $ minikube version
 # minikube version: v0.16.0
-
 ```
-
 ### kubectl安装
 kubectl同样是go语言编写， 发布形式是一个独立的二进制文件，我们只需要下载该文件就可以正常使用。
 ``` sh
@@ -37,7 +35,6 @@ $ mv kubectl /usr/local/bin
 
 # 查看版本确认安装成功
 $ kubectl version
-
 ```
 
 ### docker-machine-driver-kvm安装
@@ -51,7 +48,6 @@ $ chmod +x docker-machine-driver-kvm
 
 # 移动文件到/usr/local/bin
 $ mv docker-machine-driver-kvm /usr/local/bin
-
 ```
 
 ### kvm驱动安装
@@ -70,7 +66,6 @@ $ yum install libguestfs libguestfs-tools libvirt
 # ubuntu 系统
 # 安装驱动和相应的工具
 $ sudo apt install libvirt-bin qemu-kvm
-
 ```
 
 ### 启动kvm相关服务
@@ -79,7 +74,6 @@ kvm安装好后需要启动相应的服务才能保证虚拟机正常启动使�
 ``` sh
 $ libvirtd -d
 $ systemctl start virtlogd.socket
-
 ```
 
 ### 启动minikube
@@ -94,7 +88,6 @@ $ minikube -h
 # --vm 参数指定了需要使用的驱动程序， linux下默认使用的是virtualbox程序来启动， 由于virtualbox操作安装问题较多，所以这里选用了kvm
 # 可以借助kvm强大的命令行工具集合来操作方便快捷
 $ minikube start --vm-driver=kvm
-
 ```
 
 开启日志启动命令
@@ -106,7 +99,6 @@ $ minikube start --vm-driver=kvm
 # --v=3 libmachine logging
 # --v=7 libmachine --debug level logging
 $ minikube start --v=7 --vm-driver=kvm
-
 ```
 
 以上只说明了--v和--vm参数的使用说明，由于minikube涉及的参数比较多，使用的时候可以根据自己需要查看帮助文档，或者参考官方说明。本文只列出了linux下的部署说明，windows和mac系统下请参阅[官方说明](https://github.com/kubernetes/minikube/blob/v0.16.0/README.md)。
@@ -125,7 +117,6 @@ $ minikube start --v=7 --vm-driver=kvm
 [kubectl命令详细说明](https://www.kubernetes.org.cn/doc-45)  
 
 ２. 获取pod列表  
-
 ``` sh
 # 命令会返回当前kubernetes 已经创建的pods列表，主要会显示以下信息
 # NAME                    READY     STATUS    RESTARTS   AGE
@@ -140,19 +131,16 @@ $ kubectl get pod
 ``` sh
 # 使用pod名称查看pod的详细信息, 主要是容器的详细信息
 $ kubectl describe pod etcd-global-9002d
-
 ```  
 ４. 查询部署列表  
 ``` sh
 # 获取部署列表
 $ kubectl get deployment
 ```
-
 5. 删除部署
 ``` sh
 # 删除名称为etcd-minikube的部署
 $ kubectl delete deployment etcd-minikube
-
 ```
 
 ### 容器相关
@@ -162,7 +150,6 @@ $ kubectl delete deployment etcd-minikube
 $ docker pull test
 # docker pull vitess/etcd:v2.0.13-lite
 # docker pull vitess/lite
-
 ```
 2. 查看容器列表  
 ``` sh
@@ -172,31 +159,26 @@ $ docker ps
 # 返回以下信息
 # CONTAINER ID IMAGE COMMAND CREATED STATUS PORTS NAMES
 ```
-
 3. 登录容器  
 ``` sh
 # 通过容器ID登录容器
 $ docker exec -it 容器ID /bin/bash　
 # docker exec -it 66f92ed4befb /bin/bash
 ```
-
 4. 保存容器镜像  
 ``` sh
 # 保存已经下载下来的容器到文件，xxx是镜像名称(REPOSITORY)　
 $ docker save -o xxx.tar xxx  
-
 ```
 
 5. 加载镜像  
 ``` sh
 # 加载导出的镜像文件
 $ docker load --input xxx.tar
-
 ```
 如果有多个镜像文件，可以使用脚本进行批量导入
 ``` sh
 $ ls -l | awk -F ' ' '{print "docker load --input="$NF}' | sh
-
 ```
 
 ### kvm相关
