@@ -1,53 +1,42 @@
-本页解释如何在[Kubernetes](http://kubernetes.io)上运行Vitess。同时还提供了使用[Google Container Engine](https://cloud.google.com/container-engine/)启动Kubernetes集群的步骤。
+本页解释如何在[Kubernetes](http://kubernetes.io)集群上运行Vitess。同时还提供了[Google Container Engine](https://cloud.google.com/container-engine/)启动Kubernetes集群的使用步骤。
 
-如果你在其他平台上已经有Kubernetes v1.0+版本的支持，你可以跳过`gcloud`步骤。 `kubectl`步骤将应用于任何Kubernetes集群。
+如果你在其他平台上已经有Kubernetes v1.0+版本的支持，你可以跳过`gcloud`步骤。 `kubectl`可以应用于任何Kubernetes集群。
 
 ## 先决条件
 
 为了更好的使用本指南，您必须在本地安装Go 1.7+，Vitess的`vtctlclient`工具和Google Cloud SDK。以下部分说明如何在您的环境中进行配置。
+其中，Google Cloud SDK不是非必需的，如果您在自有环境中搭建Kubernetes，那么就可以忽略Google Cloud SDK。
 
 ### 安装Go 1.7+
 
-您需要安装[Go 1.7+](http://golang.org/doc/install)才能构建`vtctlclient`工具， vtctlclient可以向Vitess发送相关命令。
+您需要安装[Go 1.7+](http://golang.org/doc/install)才能编译安装`vtctlclient`工具， vtctlclient可以向Vitess发送相关管理命令。
 
-After installing Go, make sure your `GOPATH` environment
-variable is set to the root of your workspace. The most common setting
-is `GOPATH=$HOME/go`, and the value should identify a
-directory to which your non-root user has write access.
+go环境安装完成后，请确保您的环境变量中`GOPATH`指向您工作目录的根目录。最常用的设置是`GOPATH=$HOME/go`，
+同时需要确保该非root用户对该目录具有读写权限。
 
-In addition, make sure that `$GOPATH/bin` is included in
-your `$PATH`. More information about setting up a Go
-workspace can be found at
-[How to Write Go Code](http://golang.org/doc/code.html#Organization).
+
+另外，请确保把`$GOPATH/bin`路径增加到环境变量`$PATH`中；有关go工作路径的更多信息可以参阅[如何使用go语言开发](http://golang.org/doc/code.html#Organization)。
 
 ### 编译安装vtctlclient
 
-The `vtctlclient` tool issues commands to Vitess.
-
+`vtctlclient`工具可以用来向Vitess发送命令。
 ``` sh
 $ go get github.com/youtube/vitess/go/cmd/vtctlclient
 ```
-
-This command downloads and builds the Vitess source code at:
-
+该命令在以下目录下载并且编译了Vitess源码：
 ``` sh
 $GOPATH/src/github.com/youtube/vitess/
 ```
 
-It also copies the built `vtctlclient` binary into `$GOPATH/bin`.
+同时他也会把编译好的`vtctlclient`二进制文件拷贝到目录`$GOPATH/bin`下。
 
 ### 设置Google Compute Engine, Container Engine和Cloud工具
 
-**Note:** If you are running Kubernetes elsewhere, skip to
-[Locate kubectl](#locate-kubectl).
+**注意:** 如果您在别处运行Kubernetes， 那么请跳转到[本地kubectl](#locate-kubectl)。
 
-To run Vitess on Kubernetes using Google Compute Engine (GCE),
-you must have a GCE account with billing enabled. The instructions
-below explain how to enable billing and how to associate a billing
-account with a project in the Google Developers Console.
+为了使用GCE在Kubernetes上运行Vitess， 我们必须有一个GCE账户来计费。下面就说明在Google Developers Console中构建项目如何开启计费功能以及如何关联账户。
 
-1.  Log in to the Google Developers Console to [enable billing]
-    (https://console.developers.google.com/billing).
+1. 登陆到谷歌开发者中心来[开启计费](https://console.developers.google.com/billing)。
     1.  Click the **Billing** pane if you are not there already.
     1.  Click **New billing account**.
     1.  Assign a name to the billing account -- e.g. "Vitess on
@@ -85,8 +74,7 @@ account with a project in the Google Developers Console.
     $ gcloud config set project PROJECT
     ```
 
-1.  Install or update the `kubectl` tool:
-
+1.  安装或者更新`kubectl`工具:
     ``` sh
     $ gcloud components update kubectl
     ```
@@ -109,16 +97,13 @@ account with a project in the Google Developers Console.
 ## 启动容器集群
 
 **注意:** 如果您在其他地方运行Kubernetes，请跳到[启动Vitess集群](#start-a-vitess-cluster)。
-
-1.  Set the [zone](https://cloud.google.com/compute/docs/zones#overview)
-    that your installation will use:
-
+1. 设置[zone][zone](https://cloud.google.com/compute/docs/zones#overview)。
+    使用以下命令安装：
     ``` sh
     $ gcloud config set compute/zone us-central1-b
     ```
 
-1.  Create a Container Engine cluster:
-
+1.  创建容器引擎集群：
     ``` sh
     $ gcloud container clusters create example --machine-type n1-standard-4 --num-nodes 5 --scopes storage-rw
     ### example output:
@@ -127,17 +112,13 @@ account with a project in the Google Developers Console.
     # kubeconfig entry generated for example.
     ```
 
-    **Note:** The `--scopes storage-rw` argument is necessary to allow
+    **注意:** The `--scopes storage-rw` argument is necessary to allow
     [built-in backup/restore](http://vitess.io/user-guide/backup-and-restore.html)
     to access [Google Cloud Storage](https://cloud.google.com/storage/).
 
-1.  Create a Cloud Storage bucket:
+1.  创建一个云存储bucket:
 
-    To use the Cloud Storage plugin for built-in backups, first create a
-    [bucket](https://cloud.google.com/storage/docs/concepts-techniques#concepts)
-    for Vitess backup data. See the
-    [bucket naming guidelines](https://cloud.google.com/storage/docs/bucket-naming)
-    if you're new to Cloud Storage.
+    为了给backups使用云存储插件，首先需要创建一个[bucket](https://cloud.google.com/storage/docs/concepts-techniques#concepts)用来存储Vitess备份数据。详细信息可以查阅[bucket naming guidelines](https://cloud.google.com/storage/docs/bucket-naming)。
 
     ``` sh
     $ gsutil mb gs://my-backup-bucket
@@ -291,19 +272,10 @@ account with a project in the Google Developers Console.
     # Creating pod for tablet test-0000000104...
     # pod "vttablet-104" created
     ```
-    在vtctld Web管理界面中很快就会看到一个名为`test_keyspace`的[keyspace](http://vitess.io/overview/concepts.html#keyspace)，其中有一个名为`0`的分片
-    In the vtctld web UI, you should soon see a
-    [keyspace](http://vitess.io/overview/concepts.html#keyspace) named `test_keyspace`
-    with a single [shard](http://vitess.io/overview/concepts.html#shard) named `0`.
-    Click on the shard name to see the list of tablets. When all 5 tablets
-    show up on the shard status page, you're ready to continue. Note that it's
-    normal for the tablets to be unhealthy at this point, since you haven't
-    initialized the databases on them yet.
+    启动后在vtctld Web管理界面中很快就会看到一个名为`test_keyspace`的[keyspace](http://vitess.io/overview/concepts.html#keyspace)，其中有一个名为`0`的分片。点击分片名称可以查看
+    tablets列表。当5个tablets全部显示在分片状态页面上，就可以继续下一步操作。注意，当前状态tablets不健康是正常的，因为在tablets上面还没有初始化数据库。
 
-    It can take some time for the tablets to come up for the first time if a pod
-    was scheduled on a node that hasn't downloaded the [Vitess Docker image]
-    (https://hub.docker.com/u/vitess/) yet. You can also check the status of the
-    tablets from the command line using `kvtctl.sh`:
+    tablets第一次创建的时候， 如果pod对应的node上尚未下载对应的[Vitess镜像](https://hub.docker.com/u/vitess/)文件，那么创建就需要花费较多的时间。同样也可以通过命令行使用`kvtctl.sh`查看tablets的状态。
 
     ``` sh
     vitess/examples/kubernetes$ ./kvtctl.sh ListAllTablets test
@@ -315,19 +287,13 @@ account with a project in the Google Developers Console.
     # test-0000000104 test_keyspace 0 spare 10.64.2.6:15002 10.64.2.6:3306 []
     ```
 
-8.  **Initialize MySQL databases**
+8.  **初始化MySQL数据库**
 
-    Once all the tablets show up, you're ready to initialize the underlying
-    MySQL databases.
+    一旦所有的tablets都启动完成， 我们就可以初始化底层数据库了。
 
-    **Note:** Many `vtctlclient` commands produce no output on success.
+    **注意:** 许多`vtctlclient`命令在执行成功时不返回任何输出。
 
-    First, designate one of the tablets to be the initial master. Vitess will
-    automatically connect the other slaves' mysqld instances so that they start
-    replicating from the master's mysqld. This is also when the default database
-    is created. Since our keyspace is named `test_keyspace`, the MySQL database
-    will be named `vt_test_keyspace`.
-
+    首先，指定tablets其中一个作为初始化的master。Vitess会自动连接其他slaves的mysqld实例，以便他们开启从master复制数据的mysqld进程； 默认数据库创建也是如此。 因为我们的keyspace名称为`test_keyspace`，所以MySQL的数据库会被命名为`vt_test_keyspace`。
     ``` sh
     vitess/examples/kubernetes$ ./kvtctl.sh InitShardMaster -force test_keyspace/0 test-0000000100
     ### example output:
@@ -335,13 +301,9 @@ account with a project in the Google Developers Console.
     # master-elect tablet test-0000000100 is not a master in the shard, proceeding anyway as -force was used
     ```
 
-    **Note:** Since this is the first time the shard has been started, the
-    tablets are not already doing any replication, and there is no existing
-    master. The `InitShardMaster` command above uses the `-force` flag to bypass
-    the usual sanity checks that would apply if this wasn't a brand new shard.
+    **注意:** 因为分片是第一次启动， tablets还没有准备做任何复制操作， 也不存在master。如果分片不是一个全新的分片，`InitShardMaster`命令增加`-force`标签可以绕过应用的健全检查。
 
-    After the tablets finish updating, you should see one **master**, and
-    several **replica** and **rdonly** tablets:
+    tablets更新完成后，你可以看到一个**master**, 多个 **replica** 和 **rdonly** tablets:
 
     ``` sh
     vitess/examples/kubernetes$ ./kvtctl.sh ListAllTablets test
@@ -353,23 +315,19 @@ account with a project in the Google Developers Console.
     # test-0000000104 test_keyspace 0 rdonly 10.64.2.6:15002 10.64.2.6:3306 []
     ```
 
-    The **replica** tablets are used for serving live web traffic, while the
-    **rdonly** tablets are used for offline processing, such as batch jobs and backups.
-    The amount of each [tablet type](http://vitess.io/overview/concepts.html#tablet)
-    that you launch can be configured in the `vttablet-up.sh` script.
+    **replica** tablets通常用于提供实时网络流量, 而 **rdonly** tablets通常用于离线处理, 例如批处理作业和备份。
+    每个[tablet type](http://vitess.io/overview/concepts.html#tablet)的数量可以在配置脚本`vttablet-up.sh`中配置。
 
-9.  **Create a table**
+9.  **创建表**
 
-    The `vtctlclient` tool can be used to apply the database schema
-    across all tablets in a keyspace. The following command creates
-    the table defined in the `create_test_table.sql` file:
+    `vtctlclient`命令可以跨越keyspace里面的所有tablets来应用数据库变更。以下命令创建定义在文件`create_test_table.sql`中的表：
 
     ``` sh
     # Make sure to run this from the examples/kubernetes dir, so it finds the file.
     vitess/examples/kubernetes$ ./kvtctl.sh ApplySchema -sql "$(cat create_test_table.sql)" test_keyspace
     ```
 
-    The SQL to create the table is shown below:
+    创建表的SQL如下所示：
 
     ``` sql
     CREATE TABLE messages (
@@ -380,9 +338,8 @@ account with a project in the Google Developers Console.
     ) ENGINE=InnoDB
     ```
 
-    You can run this command to confirm that the schema was created
-    properly on a given tablet, where `test-0000000100`
-    is a tablet alias as shown by the `ListAllTablets` command:
+    我们可以通过运行此命令来确认在给定的tablet是否创建成功，`test-0000000100`是`ListAllTablets`命令显示
+    tablet列表其中一个tablet的别名：
 
     ``` sh
     vitess/examples/kubernetes$ ./kvtctl.sh GetSchema test-0000000100
@@ -401,19 +358,13 @@ account with a project in the Google Developers Console.
     # ...
     ```
 
-10.  **Take a backup**
+10.  **执行备份**
 
-    Now that the initial schema is applied, it's a good time to take the first
-    [backup](http://vitess.io/user-guide/backup-and-restore.html). This backup
-    will be used to automatically restore any additional replicas that you run,
-    before they connect themselves to the master and catch up on replication.
-    If an existing tablet goes down and comes back up without its data, it will
-    also automatically restore from the latest backup and then resume replication.
+    现在， 数据库初始化已经应用， 是执行第一次[备份](http://vitess.io/user-guide/backup-and-restore.html)的最佳时间。在他们连上master并且复制之前， 这个备份将用于自动还原运行的任何其他副本。
 
-    Select one of the **rdonly** tablets and tell it to take a backup. We use a
-    **rdonly** tablet instead of a **replica** because the tablet will pause
-    replication and stop serving during data copy to create a consistent snapshot.
+    如果一个已经存在的tablet出现故障，并且没有备份数据， 那么他将会自动从最新的备份恢复并且恢复复制。
 
+    选择其中一个 **rdonly** tablets并且执行备份。因为在数据复制期间创建一致性快照tablet会暂停复制并且停止服务，所以我们使用 **rdonly** tablet代替 **replica**。
     ``` sh
     vitess/examples/kubernetes$ ./kvtctl.sh Backup test-0000000104
     ```
@@ -426,19 +377,17 @@ account with a project in the Google Developers Console.
     # 2015-10-21.042940.test-0000000104
     ```
 
-11. **Initialize Vitess Routing Schema**
-
-    In the examples, we are just using a single database with no specific
-    configuration. So we just need to make that (empty) configuration visible
-    for serving. This is done by running the following command:
+11. **初始化Vitess路由**
+    在本例中， 我们只使用了没有特殊配置的单个数据库。因此，我们只需要确保当前(空)配置处于服务状态。
+    我们可以通过运行以下命令完成：
 
     ``` sh
     vitess/examples/kubernetes$ ./kvtctl.sh RebuildVSchemaGraph
     ```
 
-    (As it works, this command will not display any output.)
+    （因为在运行，此命令将不显示任何输出。）
 
-12.  **Start vtgate**
+12.  **启动vtgate**
 
     Vitess uses [vtgate](http://vitess.io/overview/#vtgate) to route each client
     query to the correct `vttablet`. In Kubernetes, a `vtgate` service
@@ -455,7 +404,7 @@ account with a project in the Google Developers Console.
     # replicationcontroller "vtgate-test" created
     ```
 
-## Test your cluster with a client app
+## 使用客户端app测试集群
 
 The GuestBook app in the example is ported from the
 [Kubernetes GuestBook example](https://github.com/kubernetes/kubernetes/tree/master/examples/guestbook-go).
@@ -532,7 +481,7 @@ The [GuestBook source code]
 (https://github.com/youtube/vitess/tree/master/examples/kubernetes/guestbook)
 provides more detail about how the app server interacts with Vitess.
 
-## Try Vitess resharding
+## 测试Vitess resharding
 
 Now that you have a full Vitess stack running, you may want to go on to the
 [Sharding in Kubernetes](http://vitess.io/user-guide/sharding-kubernetes.html)
@@ -542,7 +491,7 @@ guide to try out
 If so, you can skip the tear-down since the sharding guide picks up right here.
 If not, continue to the clean-up steps below.
 
-## Tear down and clean up
+## 关闭和清理
 
 Before stopping the Container Engine cluster, you should tear down the Vitess
 services. Kubernetes will then take care of cleaning up any entities it created
@@ -570,9 +519,9 @@ to use them again soon:
 $ gcloud compute firewall-rules delete guestbook
 ```
 
-## Troubleshooting
+## 故障排除
 
-### Server logs
+### 服务日志
 
 If a pod enters the `Running` state, but the server
 doesn't respond as expected, use the `kubectl logs`
@@ -591,7 +540,7 @@ Post the logs somewhere and send a link to the [Vitess
 mailing list](https://groups.google.com/forum/#!forum/vitess)
 to get more help.
 
-### Shell access
+### Shell访问
 
 If you want to poke around inside a container, you can use `kubectl exec` to run
 a shell.
@@ -608,7 +557,7 @@ root@vttablet-100:/# ls /vt/vtdataroot/vt_0000000100
 # error.log  multi-master.info       mysql.sock  tmp
 ```
 
-### Root certificates
+### Root证书
 
 If you see in the logs a message like this:
 
@@ -624,7 +573,7 @@ for examples of how to set the right location for your host OS.
 You'll also need to adjust the same certificate path settings in the
 `vtctld` and `vttablet` templates.
 
-### Status pages for vttablets
+### vttablets状态页面
 
 Each `vttablet` serves a set of HTML status pages on its primary port.
 The `vtctld` interface provides a **STATUS** link for each tablet.
@@ -638,7 +587,7 @@ to see the status page for the tablet with ID `100`, you could navigate to:
 
 http://localhost:8001/api/v1/proxy/namespaces/default/pods/vttablet-100:15002/debug/status
 
-### Direct connection to mysqld
+### 直连mysqld
 
 Since the `mysqld` within the `vttablet` pod is only meant to be accessed
 via vttablet, our default bootstrap settings only allow connections from
