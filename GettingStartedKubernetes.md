@@ -377,7 +377,8 @@ $GOPATH/src/github.com/youtube/vitess/
     # 2015-10-21.042940.test-0000000104
     ```
 
-11. **初始化Vitess路由**
+11. **初始化Vitess路由**  
+
     在本例中， 我们只使用了没有特殊配置的单个数据库。因此，我们只需要确保当前(空)配置处于服务状态。
     我们可以通过运行以下命令完成：
 
@@ -389,11 +390,8 @@ $GOPATH/src/github.com/youtube/vitess/
 
 12.  **启动vtgate**
 
-    Vitess uses [vtgate](http://vitess.io/overview/#vtgate) to route each client
-    query to the correct `vttablet`. In Kubernetes, a `vtgate` service
-    distributes connections to a pool of `vtgate` pods. The pods are curated by
-    a [replication controller]
-    (http://kubernetes.io/v1.1/docs/user-guide/replication-controller.html).
+    Vitess通过使用[vtgate](http://vitess.io/overview/#vtgate)路由每个客户端的查询到正确的`vttablet`。
+    在KubernetesIn中`vtgate`服务将连接分发到一个`vtgate`pods池中。pods由[replication controller](http://kubernetes.io/v1.1/docs/user-guide/replication-controller.html)来制定。
 
     ``` sh
     vitess/examples/kubernetes$ ./vtgate-up.sh
@@ -483,19 +481,14 @@ provides more detail about how the app server interacts with Vitess.
 
 ## 测试Vitess resharding
 
-Now that you have a full Vitess stack running, you may want to go on to the
-[Sharding in Kubernetes](http://vitess.io/user-guide/sharding-kubernetes.html)
-guide to try out
-[dynamic resharding](http://vitess.io/user-guide/sharding.html#resharding).
+现在你有一个完整的Vitess堆栈运行，你可能想继续按照[Sharding in Kubernetes](http://vitess.io/user-guide/sharding-kubernetes.html)测试[dynamic resharding](http://vitess.io/user-guide/sharding.html#resharding)。
 
-If so, you can skip the tear-down since the sharding guide picks up right here.
-If not, continue to the clean-up steps below.
+如果是这样， 你可以跳过关闭和清理， 因为sharding指南可以直接跳转查阅。 如果不是请继续下面的关闭和清理。
 
 ## 关闭和清理
 
-Before stopping the Container Engine cluster, you should tear down the Vitess
-services. Kubernetes will then take care of cleaning up any entities it created
-for those services, like external load balancers.
+在停止Container Engine集群之前，应该删除Vitess服务。对于那些服务Kubernetes会负责清理它创建的任何实体
+， 比如外部负载均衡。
 
 ``` sh
 vitess/examples/kubernetes$ ./guestbook-down.sh
@@ -523,9 +516,8 @@ $ gcloud compute firewall-rules delete guestbook
 
 ### 服务日志
 
-If a pod enters the `Running` state, but the server
-doesn't respond as expected, use the `kubectl logs`
-command to check the pod output:
+如果一个pod进入`Running`状态，但是服务并没有按照预期响应。 那么我可以通过使用`kubectl logs`命令来查看
+pod输出：
 
 ``` sh
 # show logs for container 'vttablet' within pod 'vttablet-100'
@@ -536,9 +528,8 @@ $ kubectl logs vttablet-100 vttablet
 $ kubectl logs vttablet-100 mysql
 ```
 
-Post the logs somewhere and send a link to the [Vitess
-mailing list](https://groups.google.com/forum/#!forum/vitess)
-to get more help.
+发布日志在某个地方，并且发送一个链接到[Vitess邮件列表](https://groups.google.com/forum/#!forum/vitess)获
+得更多的帮助。
 
 ### Shell访问
 
