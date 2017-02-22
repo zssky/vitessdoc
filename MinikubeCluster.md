@@ -208,6 +208,7 @@ $ virsh setmem xxxxx 512000
 $ virsh resume xxxx
 ```
 * 修改虚拟机配置文件
+
   上面所说的修改内存还有一种方法是可以直接修改运行中的虚拟机的配置文件，以达到修改对应参数的效果，修改配置文件相对于其他命令来说比较好用，kvm虚拟机配置都是以xml格式配置的，我们可以使用virsh edit直接修改。
   ``` sh
   # 使用如下命令就会显示配置文件编辑窗口，对应的ｘｍｌ文件记录了虚拟机的各种参数，　修改完成重启虚拟机即可生效
@@ -215,6 +216,7 @@ $ virsh resume xxxx
   ```
 
 * 其他
+
   在使用minikube通过kvm创建虚拟机的时候，文件virbr1.status记录着对应的ip信息，如果出现ip冲突可以修改以下文件进行处理，保证以下文件只有一个唯一的ip即可。
 ``` sh
 $ vim /var/lib/libvirt/dnsmasq/virbr1.status
@@ -226,22 +228,24 @@ $ vim /var/lib/libvirt/dnsmasq/virbr1.status
 
 ### 编译安装vtctlclient
 
-  `vtctlclient`工具可以用来向Vitess发送命令，　所以安全环境前我们需要先安装`vtctlclient`。
+  `vtctlclient`工具可以用来向Vitess发送命令，　所以安装环境前我们需要先安装`vtctlclient`。
 
   ``` sh
   $ go get github.com/youtube/vitess/go/cmd/vtctlclient
   ```
-  该命令会在$GOPATH/src/github.com/youtube/vitess/目录下载并且编译`vitess`源码，　同时也会把编译好的vtctlclient二进制文件拷贝到目录$GOPATH/bin下。
+  该命令会在`$GOPATH/src/github.com/youtube/vitess/`目录下下载并且编译`vtctlclient`源码，　同时也会把编译好的vtctlclient二进制文件拷贝到目录`$GOPATH/bin`下。
 
-### 本地kubectl
+### 本地kubectl　　
 
-    如果正常按照文档说明本地`kubectl`已经安装完成，这里我们需要再次校验一下，确保`kubectl`处于正常可用状态。
+    如果正常按照文档说明安装，本地`kubectl`就应该已经安装完成，这里我们需要再次校验一下，确保`kubectl`处于正常可用状态。
     检查`kubectl`是否已经正常安装并设置环境变量PATH:
+
     ``` sh
     $ which kubectl
     ### example output:
     # /usr/local/bin/kubectl
     ```
+
     如果kubectl没有包含在$PATH环境变量中，　就需要设置`KUBECTL`环境变量，否则执行启动脚本的时候无法获取`kubectl`位置。
 
     ``` sh
