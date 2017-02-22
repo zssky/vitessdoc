@@ -1,4 +1,4 @@
-# 基于minikube的kubernetes集群部署Vitess最佳实践
+# 基于minikube的kubernetes集群部署及Vitess最佳实践
 
 ## 简介
 [minikube](https://github.com/kubernetes/minikube/blob/v0.16.0/README.md)是一个可以很容易在本地运行Kubernetes集群的工具,
