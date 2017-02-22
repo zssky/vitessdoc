@@ -235,11 +235,10 @@ $ vim /var/lib/libvirt/dnsmasq/virbr1.status
   ```
   该命令会在`$GOPATH/src/github.com/youtube/vitess/`目录下下载并且编译`vtctlclient`源码，　同时也会把编译好的vtctlclient二进制文件拷贝到目录`$GOPATH/bin`下。
 
-### 本地kubectl　　
+### 本地kubectl
 
     如果正常按照文档说明安装，本地`kubectl`就应该已经安装完成，这里我们需要再次校验一下，确保`kubectl`处于正常可用状态。
     检查`kubectl`是否已经正常安装并设置环境变量PATH:
-
     ``` sh
     $ which kubectl
     ### example output:
@@ -258,10 +257,12 @@ $ vim /var/lib/libvirt/dnsmasq/virbr1.status
     ``` sh
     $ cd $GOPATH/src/github.com/youtube/vitess/examples/kubernetes
     ```
+
 2. 修改本地配置
 
     运行configure.sh脚本来生成config.sh文件，config.sh用于自定义的集群设置。对于备份官方支持两种方式file和gcs方式，我们这里使用file方式创建备份。
     ``` sh
+
     vitess/examples/kubernetes$ ./configure.sh
     ### example output:
     # Vitess Docker image (leave empty for default) []:
@@ -276,7 +277,8 @@ $ vim /var/lib/libvirt/dnsmasq/virbr1.status
 
 3. 启动etcd集群
 
-    Vitess[拓扑服务](http://vitess.io/overview/concepts.html#topology-service)存储Vitess集群中所有服务器的协作元数据， 他将此数据存储在支持数据一致性存储系统中。本例中我们使用[etcd](https://github.com/coreos/etcd)来存储，注意，我们需要自己的etcd集群，与Kubernetes本身使用的集群分开。
+    Vitess[拓扑服务](http://vitess.io/overview/concepts.html#topology-service)存储Vitess集群中所有服务器的协作元数据， 他将此数据存储在支持数据一致性的分布式存储系统中。本例中我们使用[etcd](https://github.com/coreos/etcd)来存储，注意：我们需要自己的etcd集群，与Kubernetes本身使用的集群分开。
+
     ``` sh
     vitess/examples/kubernetes$ ./etcd-up.sh
     ### example output:
@@ -340,13 +342,14 @@ $ vim /var/lib/libvirt/dnsmasq/virbr1.status
 
     http://localhost:8001/api/v1/proxy/namespaces/default/services/vtctld:web/
 
+    界面截图如下:  
     ![Alt text](https://github.com/davygeek/vitessdoc/blob/master/res/vtctld_web.png)
 
     同时，还可以通过proxy进入[Kubernetes Dashboard]
     (http://kubernetes.io/v1.1/docs/user-guide/ui.html), 监控nodes, pods和服务器状态:
 
     http://localhost:8001/ui
-
+    控制台截图如下:  
     ![Alt text](https://github.com/davygeek/vitessdoc/blob/master/res/Kubernetes_ui.png)
 
 6. **启动vttablets**
@@ -394,7 +397,7 @@ $ vim /var/lib/libvirt/dnsmasq/virbr1.status
 
     **注意:** 许多`vtctlclient`命令在执行成功时不返回任何输出。
 
-    首先，指定tablets其中一个作为初始化的master。Vitess会自动连接其他slaves的mysqld实例，以便他们开启从master复制数据的mysqld进程； 默认数据库创建也是如此。 因为我们的keyspace名称为`test_keyspace`，所以MySQL的数据库会被命名为`vt_test_keyspace`。
+    首先，指定tablets其中一个作为初始化的master。Vitess会自动连接其他slaves的mysqld实例，以便他们开启从master复制数据； 默认数据库创建也是如此。 因为我们的keyspace名称为`test_keyspace`，所以MySQL的数据库会被命名为`vt_test_keyspace`。
     ``` sh
     vitess/examples/kubernetes$ ./kvtctl.sh InitShardMaster -force test_keyspace/0 test-0000000100
     ### example output:
@@ -402,9 +405,9 @@ $ vim /var/lib/libvirt/dnsmasq/virbr1.status
     # master-elect tablet test-0000000100 is not a master in the shard, proceeding anyway as -force was used
     ```
 
-    **注意:** 因为分片是第一次启动， tablets还没有准备做任何复制操作， 也不存在master。如果分片不是一个全新的分片，`InitShardMaster`命令增加`-force`标签可以绕过应用的健全检查。
+    **注意:** 因为分片是第一次启动， tablets还没有准备做任何复制操作， 也不存在master。如果分片不是一个全新的分片，`InitShardMaster`命令增加`-force`标签可以绕过应用的完整性检查。
 
-    tablets更新完成后，你可以看到一个**master**, 多个 **replica** 和 **rdonly** tablets:
+    tablets更新完成后，你可以看到一个　**master**, 多个 **replica** 和 **rdonly** tablets:
 
     ``` sh
     vitess/examples/kubernetes$ ./kvtctl.sh ListAllTablets test
@@ -421,7 +424,7 @@ $ vim /var/lib/libvirt/dnsmasq/virbr1.status
 
 9.  **创建表**
 
-    `vtctlclient`命令可以跨越keyspace里面的所有tablets来应用数据库变更。以下命令创建定义在文件`create_test_table.sql`中的表：
+    `vtctlclient`命令可以跨越keyspace里面的所有tablets来应用数据库变更。以下命令可以通过文件`create_test_table.sql`的内容来创建表：
 
     ``` sh
     # Make sure to run this from the examples/kubernetes dir, so it finds the file.
@@ -439,8 +442,8 @@ $ vim /var/lib/libvirt/dnsmasq/virbr1.status
     ) ENGINE=InnoDB
     ```
 
-    我们可以通过运行此命令来确认在给定的tablet是否创建成功，`test-0000000100`是`ListAllTablets`命令显示
-    tablet列表其中一个tablet的别名：
+    我们可以通过运行此命令来确认在给定的tablet上表是否创建成功，`test-0000000100`是`ListAllTablets`命令显示
+    tablet列表中一个tablet的别名：
 
     ``` sh
     vitess/examples/kubernetes$ ./kvtctl.sh GetSchema test-0000000100
@@ -461,37 +464,36 @@ $ vim /var/lib/libvirt/dnsmasq/virbr1.status
 
 10.  **执行备份**
 
-    现在， 数据库初始化已经应用， 是执行第一次[备份](http://vitess.io/user-guide/backup-and-restore.html)的最佳时间。在他们连上master并且复制之前， 这个备份将用于自动还原运行的任何其他副本。
-
+    现在， 数据库初始化已经应用， 可以开始执行第一次[备份](http://vitess.io/user-guide/backup-and-restore.html)了。在他们连上master并且复制之前， 这个备份将用于自动还原运行的任何其他副本。
     如果一个已经存在的tablet出现故障，并且没有备份数据， 那么他将会自动从最新的备份恢复并且恢复复制。
 
-    选择其中一个 **rdonly** tablets并且执行备份。因为在数据复制期间创建一致性快照tablet会暂停复制并且停止服务，所以我们使用 **rdonly** tablet代替 **replica**。
+    选择其中一个 **rdonly** tablets并且执行备份。因为在数据复制期间创建快照的tablet会暂停复制并且停止服务，所以我们使用 **rdonly** 代替 **replica**。
     ``` sh
     vitess/examples/kubernetes$ ./kvtctl.sh Backup test-0000000104
     ```
 
-    After the backup completes, you can list available backups for the shard:
+    备份完成后，可以通过一下命令查询备份列表：
 
     ``` sh
     vitess/examples/kubernetes$ ./kvtctl.sh ListBackups test_keyspace/0
     ### example output:
-    # 2015-10-21.042940.test-0000000104
+    # 201７-０２-21.１42940.test-0000000104
     ```
 
 11. **初始化Vitess路由**  
 
-    在本例中， 我们只使用了没有特殊配置的单个数据库。因此，我们只需要确保当前(空)配置处于服务状态。
+    在本例中， 我们只使用了没有特殊配置的单节点数据库。因此，我们只需要确保当前配置的服务处于可用状态。
     我们可以通过运行以下命令完成：
 
     ``` sh
     vitess/examples/kubernetes$ ./kvtctl.sh RebuildVSchemaGraph
     ```
 
-    （因为在运行，此命令将不显示任何输出。）
+    （此命令执行完成后将不显示任何输出）
 
 12.  **启动vtgate**
 
-    Vitess通过使用[vtgate](http://vitess.io/overview/#vtgate)路由每个客户端的查询到正确的`vttablet`。
+    Vitess通过使用[vtgate](http://vitess.io/overview/#vtgate)来路由每个客户端的查询到正确的`vttablet`。
     在KubernetesIn中`vtgate`服务将连接分发到一个`vtgate`pods池中。pods由[replication controller](http://kubernetes.io/v1.1/docs/user-guide/replication-controller.html)来制定。
 
     ``` sh
@@ -502,6 +504,12 @@ $ vim /var/lib/libvirt/dnsmasq/virbr1.status
     # Creating vtgate replicationcontroller in cell test...
     # replicationcontroller "vtgate-test" created
     ```
+13. **说明**
+
+    到目前位置，我们整体的Vitess环境就搭建好了，可以使用命令连接服务进行测试，也可以自己部署对应的应用进行测试。　测试用例可以参考官方提供的[测试用例](http://vitess.io/getting-started/#test-your-cluster-with-a-client-app)。
 
 ## 其他
-  [Kubernetes中文文档](https://www.kubernetes.org.cn/k8s)  
+
+    基础环境的搭建完全是依赖于Kubernetes，　以下列出了对应的Kubernetes文档，　有需要的可以根据需要进行查阅。
+    [Kubernetes中文文档](https://www.kubernetes.org.cn/k8s)
+    [Kubernetes官方文档](https://kubernetes.io/docs/)
