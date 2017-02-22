@@ -345,5 +345,8 @@ $ vim /var/lib/libvirt/dnsmasq/virbr1.status
 
     ![Alt text](https://github.com/davygeek/vitessdoc/blob/master/res/Kubernetes_ui.png)
 
+6. 
+
+
 ## 其他
   [Kubernetes中文文档](https://www.kubernetes.org.cn/k8s)  
