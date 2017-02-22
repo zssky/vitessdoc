@@ -345,8 +345,159 @@ $ vim /var/lib/libvirt/dnsmasq/virbr1.status
 
     ![Alt text](https://github.com/davygeek/vitessdoc/blob/master/res/Kubernetes_ui.png)
 
-6. 
+6. **启动vttablets**
 
+    [tablet](http://vitess.io/overview/concepts.html#tablet)是Vitess扩展的基本单位。tablet由运行在相同的机器上的`vttablet` 和 `mysqld`组成。
+    我们在用Kubernetes的时候通过将vttablet和mysqld的容器放在单个[pod](http://kubernetes.io/v1.1/docs/user-guide/pods.html)中来实现耦合。
+
+    运行以下脚本以启动vttablet pod，其中也包括mysqld：
+
+    ``` sh
+    vitess/examples/kubernetes$ ./vttablet-up.sh
+    ### example output:
+    # Creating test_keyspace.shard-0 pods in cell test...
+    # Creating pod for tablet test-0000000100...
+    # pod "vttablet-100" created
+    # Creating pod for tablet test-0000000101...
+    # pod "vttablet-101" created
+    # Creating pod for tablet test-0000000102...
+    # pod "vttablet-102" created
+    # Creating pod for tablet test-0000000103...
+    # pod "vttablet-103" created
+    # Creating pod for tablet test-0000000104...
+    # pod "vttablet-104" created
+    ```
+    启动后在vtctld Web管理界面中很快就会看到一个名为`test_keyspace`的[keyspace](http://vitess.io/overview/concepts.html#keyspace)，其中有一个名为`0`的分片。点击分片名称可以查看
+    tablets列表。当5个tablets全部显示在分片状态页面上，就可以继续下一步操作。注意，当前状态tablets不健康是正常的，因为在tablets上面还没有初始化数据库。
+
+    tablets第一次创建的时候， 如果pod对应的node上尚未下载对应的[Vitess镜像](https://hub.docker.com/u/vitess/)文件，那么创建就需要花费较多的时间。同样也可以通过命令行使用`kvtctl.sh`查看tablets的状态。
+
+    ``` sh
+    vitess/examples/kubernetes$ ./kvtctl.sh ListAllTablets test
+    ### example output:
+    # test-0000000100 test_keyspace 0 spare 10.64.1.6:15002 10.64.1.6:3306 []
+    # test-0000000101 test_keyspace 0 spare 10.64.2.5:15002 10.64.2.5:3306 []
+    # test-0000000102 test_keyspace 0 spare 10.64.0.7:15002 10.64.0.7:3306 []
+    # test-0000000103 test_keyspace 0 spare 10.64.1.7:15002 10.64.1.7:3306 []
+    # test-0000000104 test_keyspace 0 spare 10.64.2.6:15002 10.64.2.6:3306 []
+    ```
+
+    ![Alt text](https://github.com/davygeek/vitessdoc/blob/master/res/kvtctl_list.png)
+
+7.  **初始化MySQL数据库**
+
+    一旦所有的tablets都启动完成， 我们就可以初始化底层数据库了。
+
+    **注意:** 许多`vtctlclient`命令在执行成功时不返回任何输出。
+
+    首先，指定tablets其中一个作为初始化的master。Vitess会自动连接其他slaves的mysqld实例，以便他们开启从master复制数据的mysqld进程； 默认数据库创建也是如此。 因为我们的keyspace名称为`test_keyspace`，所以MySQL的数据库会被命名为`vt_test_keyspace`。
+    ``` sh
+    vitess/examples/kubernetes$ ./kvtctl.sh InitShardMaster -force test_keyspace/0 test-0000000100
+    ### example output:
+    # master-elect tablet test-0000000100 is not the shard master, proceeding anyway as -force was used
+    # master-elect tablet test-0000000100 is not a master in the shard, proceeding anyway as -force was used
+    ```
+
+    **注意:** 因为分片是第一次启动， tablets还没有准备做任何复制操作， 也不存在master。如果分片不是一个全新的分片，`InitShardMaster`命令增加`-force`标签可以绕过应用的健全检查。
+
+    tablets更新完成后，你可以看到一个**master**, 多个 **replica** 和 **rdonly** tablets:
+
+    ``` sh
+    vitess/examples/kubernetes$ ./kvtctl.sh ListAllTablets test
+    ### example output:
+    # test-0000000100 test_keyspace 0 master 10.64.1.6:15002 10.64.1.6:3306 []
+    # test-0000000101 test_keyspace 0 replica 10.64.2.5:15002 10.64.2.5:3306 []
+    # test-0000000102 test_keyspace 0 replica 10.64.0.7:15002 10.64.0.7:3306 []
+    # test-0000000103 test_keyspace 0 rdonly 10.64.1.7:15002 10.64.1.7:3306 []
+    # test-0000000104 test_keyspace 0 rdonly 10.64.2.6:15002 10.64.2.6:3306 []
+    ```
+
+    **replica** tablets通常用于提供实时网络流量, 而 **rdonly** tablets通常用于离线处理, 例如批处理作业和备份。
+    每个[tablet type](http://vitess.io/overview/concepts.html#tablet)的数量可以在配置脚本`vttablet-up.sh`中配置。
+
+9.  **创建表**
+
+    `vtctlclient`命令可以跨越keyspace里面的所有tablets来应用数据库变更。以下命令创建定义在文件`create_test_table.sql`中的表：
+
+    ``` sh
+    # Make sure to run this from the examples/kubernetes dir, so it finds the file.
+    vitess/examples/kubernetes$ ./kvtctl.sh ApplySchema -sql "$(cat create_test_table.sql)" test_keyspace
+    ```
+
+    创建表的SQL如下所示：
+
+    ``` sql
+    CREATE TABLE messages (
+      page BIGINT(20) UNSIGNED,
+      time_created_ns BIGINT(20) UNSIGNED,
+      message VARCHAR(10000),
+      PRIMARY KEY (page, time_created_ns)
+    ) ENGINE=InnoDB
+    ```
+
+    我们可以通过运行此命令来确认在给定的tablet是否创建成功，`test-0000000100`是`ListAllTablets`命令显示
+    tablet列表其中一个tablet的别名：
+
+    ``` sh
+    vitess/examples/kubernetes$ ./kvtctl.sh GetSchema test-0000000100
+    ### example output:
+    # {
+    #   "DatabaseSchema": "CREATE DATABASE `{{.DatabaseName}}` /*!40100 DEFAULT CHARACTER SET utf8 */",
+    #   "TableDefinitions": [
+    #     {
+    #       "Name": "messages",
+    #       "Schema": "CREATE TABLE `messages` (\n  `page` bigint(20) unsigned NOT NULL DEFAULT '0',\n  `time_created_ns` bigint(20) unsigned NOT NULL DEFAULT '0',\n  `message` varchar(10000) DEFAULT NULL,\n  PRIMARY KEY (`page`,`time_created_ns`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8",
+    #       "Columns": [
+    #         "page",
+    #         "time_created_ns",
+    #         "message"
+    #       ],
+    # ...
+    ```
+
+10.  **执行备份**
+
+    现在， 数据库初始化已经应用， 是执行第一次[备份](http://vitess.io/user-guide/backup-and-restore.html)的最佳时间。在他们连上master并且复制之前， 这个备份将用于自动还原运行的任何其他副本。
+
+    如果一个已经存在的tablet出现故障，并且没有备份数据， 那么他将会自动从最新的备份恢复并且恢复复制。
+
+    选择其中一个 **rdonly** tablets并且执行备份。因为在数据复制期间创建一致性快照tablet会暂停复制并且停止服务，所以我们使用 **rdonly** tablet代替 **replica**。
+    ``` sh
+    vitess/examples/kubernetes$ ./kvtctl.sh Backup test-0000000104
+    ```
+
+    After the backup completes, you can list available backups for the shard:
+
+    ``` sh
+    vitess/examples/kubernetes$ ./kvtctl.sh ListBackups test_keyspace/0
+    ### example output:
+    # 2015-10-21.042940.test-0000000104
+    ```
+
+11. **初始化Vitess路由**  
+
+    在本例中， 我们只使用了没有特殊配置的单个数据库。因此，我们只需要确保当前(空)配置处于服务状态。
+    我们可以通过运行以下命令完成：
+
+    ``` sh
+    vitess/examples/kubernetes$ ./kvtctl.sh RebuildVSchemaGraph
+    ```
+
+    （因为在运行，此命令将不显示任何输出。）
+
+12.  **启动vtgate**
+
+    Vitess通过使用[vtgate](http://vitess.io/overview/#vtgate)路由每个客户端的查询到正确的`vttablet`。
+    在KubernetesIn中`vtgate`服务将连接分发到一个`vtgate`pods池中。pods由[replication controller](http://kubernetes.io/v1.1/docs/user-guide/replication-controller.html)来制定。
+
+    ``` sh
+    vitess/examples/kubernetes$ ./vtgate-up.sh
+    ### example output:
+    # Creating vtgate service in cell test...
+    # service "vtgate-test" created
+    # Creating vtgate replicationcontroller in cell test...
+    # replicationcontroller "vtgate-test" created
+    ```
 
 ## 其他
   [Kubernetes中文文档](https://www.kubernetes.org.cn/k8s)  
