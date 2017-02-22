@@ -120,93 +120,140 @@ $ minikube start --v=7 --vm-driver=kvm
 [kubectl命令详细说明](https://www.kubernetes.org.cn/doc-45)  
 
 * 获取pod列表  
-``` sh
-# 命令会返回当前kubernetes 已经创建的pods列表，主要会显示以下信息
-# NAME                    READY     STATUS    RESTARTS   AGE
-$ kubectl get pod
-# NAME                    READY     STATUS    RESTARTS   AGE
-# etcd-global-9002d       1/1       Running   0          2d
-# etcd-global-l3ph8       1/1       Running   0          2d
-# etcd-global-psj52       1/1       Running   0          2d
-```
+  ``` sh
+  # 命令会返回当前kubernetes 已经创建的pods列表，主要会显示以下信息
+  # NAME                    READY     STATUS    RESTARTS   AGE
+  $ kubectl get pod
+  # NAME                    READY     STATUS    RESTARTS   AGE
+  # etcd-global-9002d       1/1       Running   0          2d
+  # etcd-global-l3ph8       1/1       Running   0          2d
+  # etcd-global-psj52       1/1       Running   0          2d
+  ```
 
 * 查看pod详细信息  
-``` sh
-# 使用pod名称查看pod的详细信息, 主要是容器的详细信息
-$ kubectl describe pod etcd-global-9002d
-```  
+  ``` sh
+  # 使用pod名称查看pod的详细信息, 主要是容器的详细信息
+  $ kubectl describe pod etcd-global-9002d
+  ```  
+
 * 查询部署列表  
-``` sh
-# 获取部署列表
-$ kubectl get deployment
-```
+  ``` sh
+  # 获取部署列表
+  $ kubectl get deployment
+  ```
+
 * 删除部署
-``` sh
-# 删除名称为etcd-minikube的部署
-$ kubectl delete deployment etcd-minikube
-```
+  ``` sh
+  # 删除名称为etcd-minikube的部署
+  $ kubectl delete deployment etcd-minikube
+  ```
+
+* 删除容器
+  ``` sh
+  # 删除rc，即删除该rc控制的所有容器
+  $ kubectl delete rc my-nginx
+
+  # 删除svc，即删除分配的虚拟IP
+  $ kubectl delete svc my-ngin
+  ```
+
+* 获取Replication Controller
+  ``` sh
+  # 获取Replication Controller列表
+  $ kubectl get rc
+  ```
+
+* 通过外部访问kubectl内部的端口
+  ``` sh
+  # expose命令将会创建一个service，将本地（某个节点上）的一个随机端口关联到容器中的80端口
+  $ kubectl expose rc my-nginx --port=80 --type=LoadBalancer
+  ```
+
+* 查询服务信息
+  ``` sh
+  # 以上通过expose创建了一个叫my-nginx的service，我们可以通过以下命令查询服务信息
+  $ kubectl get svc my-nginx
+  ```
+
+* 根据配置文件创建pod
+  ``` sh
+  # 根据配置文件*.yaml创建容器
+  $ kubectl create -f ./hello-world.yaml
+  ```
+
+* 配置文件正确性校验
+  ``` sh
+  # 使用--vaildate参数可以校验配置文件正确性
+  $ kubectl create -f ./hello-world.yaml --validate
+  ```
+
 
 ### 容器相关
 * 拉取容器镜像  
-``` sh
-# 拉取远端名称为test的镜像
-$ docker pull test
-# docker pull vitess/etcd:v2.0.13-lite
-# docker pull vitess/lite
-```
-* 查看容器列表  
-``` sh
-# 查看当前启动的容器列表
-$ docker ps
+  ``` sh
+  # 拉取远端名称为test的镜像
+  $ docker pull test
+  # docker pull vitess/etcd:v2.0.13-lite
+  # docker pull vitess/lite
+  ```
 
-# 返回以下信息
-# CONTAINER ID IMAGE COMMAND CREATED STATUS PORTS NAMES
-```
+* 查看容器列表  
+  ``` sh
+  # 查看当前启动的容器列表
+  $ docker ps
+
+  # 返回以下信息
+  # CONTAINER ID IMAGE COMMAND CREATED STATUS PORTS NAMES
+  ```
+
 * 登录容器  
-``` sh
-# 通过容器ID登录容器
-$ docker exec -it 容器ID /bin/bash　
-# docker exec -it 66f92ed4befb /bin/bash
-```
+  ``` sh
+  # 通过容器ID登录容器
+  $ docker exec -it 容器ID /bin/bash　
+  # docker exec -it 66f92ed4befb /bin/bash
+  ```
+
 * 保存容器镜像  
-``` sh
-# 保存已经下载下来的容器到文件，xxx是镜像名称(REPOSITORY)　
-$ docker save -o xxx.tar xxx  
-```
+  ``` sh
+  # 保存已经下载下来的容器到文件，xxx是镜像名称(REPOSITORY)　
+  $ docker save -o xxx.tar xxx  
+  ```
 
 * 加载镜像  
-``` sh
-# 加载导出的镜像文件
-$ docker load --input xxx.tar
-```
-如果有多个镜像文件，可以使用脚本进行批量导入
-``` sh
-$ ls -l | awk -F ' ' '{print "docker load --input="$NF}' | sh
-```
+  ``` sh
+  # 加载导出的镜像文件
+  $ docker load --input xxx.tar
+  ```
+  如果有多个镜像文件，可以使用脚本进行批量导入
+  ``` sh
+  $ ls -l | awk -F ' ' '{print "docker load --input="$NF}' | sh
+  ```
 
 ### kvm相关
 kvm命令也很多，下面介绍部分命令，详细的命令信息可以参见virsh -h
 * 启动虚拟机  
-``` sh
-### 启动已经创建的虚拟机xxxx
-$ virsh start xxxx
-```
+  ``` sh
+  ### 启动已经创建的虚拟机xxxx
+  $ virsh start xxxx
+  ```
 
 * 暂停虚拟机
-``` sh
-#  暂停正在运行的虚拟机xxx
-$ virsh suspend xxxx
-```
+  ``` sh
+  #  暂停正在运行的虚拟机xxx
+  $ virsh suspend xxxx
+  ```
 
 * 设置虚拟机内存
-``` sh
-# 修改内存
-$ virsh setmem xxxxx 512000
-```
+  ``` sh
+  # 修改内存
+  $ virsh setmem xxxxx 512000
+  ```
+
 * 恢复挂起(暂停)的虚拟机
-``` sh
-$ virsh resume xxxx
-```
+  ``` sh
+  $ virsh resume xxxx
+  ```
+
 * 修改虚拟机配置文件
 
   上面所说的修改内存还有一种方法是可以直接修改运行中的虚拟机的配置文件，以达到修改对应参数的效果，修改配置文件相对于其他命令来说比较好用，kvm虚拟机配置都是以xml格式配置的，我们可以使用virsh edit直接修改。
@@ -218,9 +265,9 @@ $ virsh resume xxxx
 * 其他
 
   在使用minikube通过kvm创建虚拟机的时候，文件virbr1.status记录着对应的ip信息，如果出现ip冲突可以修改以下文件进行处理，保证以下文件只有一个唯一的ip即可。
-``` sh
-$ vim /var/lib/libvirt/dnsmasq/virbr1.status
-```
+  ``` sh
+  $ vim /var/lib/libvirt/dnsmasq/virbr1.status
+  ```
 
 ## Vitess部署
 
@@ -511,5 +558,6 @@ $ vim /var/lib/libvirt/dnsmasq/virbr1.status
 ## 其他
 
     基础环境的搭建完全是依赖于Kubernetes，　以下列出了对应的Kubernetes文档，　有需要的可以根据需要进行查阅。
-    [Kubernetes中文文档](https://www.kubernetes.org.cn/k8s)
-    [Kubernetes官方文档](https://kubernetes.io/docs/)
+    [测试用例](http://vitess.io/getting-started/#test-your-cluster-with-a-client-app)
+    [Kubernetes 中文文档](https://www.kubernetes.org.cn/k8s)
+    [Kubernetes 官方文档](https://kubernetes.io/docs/)
