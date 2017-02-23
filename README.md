@@ -6,11 +6,11 @@
 
 # **目录**
 * 概览
-  * [Vitess概览](https://github.com/davygeek/vitessdoc/blob/master/VitessOverview.md)
+  * [Vitess概览](https://github.com/davygeek/vitessdoc/blob/master/overview/VitessOverview.md)
   * [用Vitess扩展MySQL](#)
   * [关键概念](#)
 * 入门
-  * [在Kubernetes上运行Vitess](https://github.com/davygeek/vitessdoc/blob/master/GettingStartedKubernetes.md)
+  * [在Kubernetes上运行Vitess](https://github.com/davygeek/vitessdoc/blob/master/started/GettingStartedKubernetes.md)
   * [自定义Docker构建](#)
   * [在本地运行Vitess](#)
 * 用户指南
