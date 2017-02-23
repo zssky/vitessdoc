@@ -187,6 +187,20 @@ $ minikube start --v=7 --vm-driver=kvm
   $ kubectl create -f ./hello-world.yaml --validate
   ```
 
+* 查看日志
+  ``` sh
+  # 查看vttablet的日志
+  $ kubectl logs vttablet-100 vttablet
+
+  # 查看vttablet中mysql的日志
+  $ kubectl logs vttablet-100 mysql
+  ```
+
+* shell登录
+  ``` sh
+  # 通过kubectl exec 可以直接连接到对应的节点
+  $ kubectl exec vttablet-100 -c vttablet -t -i -- bash -il
+  ```
 
 ### 容器相关
 * 拉取容器镜像  
