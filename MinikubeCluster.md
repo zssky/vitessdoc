@@ -203,7 +203,9 @@ $ minikube start --v=7 --vm-driver=kvm
   ```
 
 * 查看service详细信息
-  kubectl --server=192.168.180.101:8080 describe service etcd-global
+  ``` sh
+  kubectl describe service etcd-global
+  ```
 
 * RC副本数量修改
   ``` sh
