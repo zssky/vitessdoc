@@ -202,6 +202,32 @@ $ minikube start --v=7 --vm-driver=kvm
   $ kubectl exec vttablet-100 -c vttablet -t -i -- bash -il
   ```
 
+* 查看service详细信息
+  kubectl --server=192.168.180.101:8080 describe service etcd-global
+
+* RC副本数量修改
+  ``` sh
+  # 可以通过本地动态修改RC副本数量实现动态扩容缩容
+  kubectl scale rc xxxx --replicas=3
+  ```
+* 查询Replica Set
+  ``` sh
+  kubectl get rs
+  ```
+
+* 查看Endpoints列表
+  ``` sh
+  # 查看Endpoints 列表
+  # Endpoint => (Pod Ip + ContainerPort)
+  kubectl get endpoints
+  ```
+
+* 查看namespaces
+  ``` sh
+  kubectl get namespace
+  ```
+
+
 ### 容器相关
 * 拉取容器镜像  
   ``` sh

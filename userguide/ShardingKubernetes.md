@@ -3,29 +3,18 @@
 
 ## 先决条件
 
-We begin by assuming you've completed the
-[Getting Started on Kubernetes](http://vitess.io/getting-started/) guide, and
-have left the cluster running.
+我们假设读者已经按照[Kubernetes基本环境搭建指南](http://vitess.io/getting-started/)完成相应的操作, 并且就只剩下集群的运行了。
 
-## Overview
+## 概述
 
-We will follow a process similar to the one in the general
-[Horizontal Sharding](http://vitess.io/user-guide/horizontal-sharding.html)
-guide, except that here we'll give the commands you'll need to do it for
-the example Vitess cluster in Kubernetes.
+我们将按照类似通常[水平拆分](http://vitess.io/user-guide/horizontal-sharding.html)指南一样的步骤去处理，除此之外我们还会给出Vitess集群在Kubernetes上运行的相关命令。
 
-Since Vitess makes [sharding](http://vitess.io/user-guide/sharding.html)
-transparent to the app layer, the
-[Guestbook](https://github.com/youtube/vitess/tree/master/examples/kubernetes/guestbook)
-sample app will stay live throughout the
-[resharding](http://vitess.io/user-guide/sharding.html#resharding) process,
-confirming that the Vitess cluster continues to serve without downtime.
+因为Vitess的[分片](http://vitess.io/user-guide/sharding.html)操作对应用层是透明的，所以[Guestbook](https://github.com/youtube/vitess/tree/master/examples/kubernetes/guestbook)
+实例将会在[resharding](http://vitess.io/user-guide/sharding.html#resharding)的过程中一直提供服务； 确保Vitess集群在分片的过程中一直保提供服务不会停机。
 
-## Configure sharding information
+## 配置分片信息
 
-The first step is to tell Vitess how we want to partition the data.
-We do this by providing a VSchema definition as follows:
-
+第一步就是需要让Vitess知道我们需要怎样对数据进行分片，我们通过提供如下的VSchema配置来实现：
 ``` json
 {
   "Sharded": true,
@@ -47,22 +36,19 @@ We do this by providing a VSchema definition as follows:
 }
 ```
 
-This says that we want to shard the data by a hash of the `page` column.
-In other words, keep each page's messages together, but spread pages around
-the shards randomly.
+这说明我们想通过 `page` 列的hash来对数据进行拆分。换一种说法就是，保证相同的page的messages数据在同一个分片是上，但是page的分布
+会被随机放置在不同的分片是上。
 
-We can load this VSchema into Vitess like this:
+我们可以通过以下命令把VSchema 信息加载到Vitess中：
 
 ``` sh
 vitess/examples/kubernetes$ ./kvtctl.sh ApplyVSchema -vschema "$(cat vschema.json)" test_keyspace
 ```
 
-## Bring up tablets for new shards
+## 新分片tablets启动
 
-In the unsharded example, you started tablets for a shard
-named *0* in *test_keyspace*, written as *test_keyspace/0*.
-Now you'll start tablets for two additional shards,
-named *test_keyspace/-80* and *test_keyspace/80-*:
+在未分片的示例中， 我们在 *test_keyspace* 中启动了一个名称为 *0* 的分片，可以这样表示 *test_keyspace/0*。
+现在，我们将会分别为两个不同的分片启动tablets，命名为 *test_keyspace/-80* 和 *test_keyspace/80-*:
 
 ``` sh
 vitess/examples/kubernetes$ ./sharded-vttablet-up.sh
@@ -73,20 +59,13 @@ vitess/examples/kubernetes$ ./sharded-vttablet-up.sh
 # ...
 ```
 
-Since the sharding key in the Guestbook app is the page number,
-this will result in half the pages going to each shard,
-since *0x80* is the midpoint of the
-[sharding key range](http://vitess.io/user-guide/sharding.html#key-ranges-and-partitions).
+因为， Guestbook应用的拆分键是page, 这就会导致pages的数据各有一半会落在不同的分片上； *0x80* 是[拆分键范围](http://vitess.io/user-guide/sharding.html#key-ranges-and-partitions)的终点。
 
-These new shards will run in parallel with the original shard during the
-transition, but actual traffic will be served only by the original shard
-until we tell it to switch over.
+在数据过渡期间，新的分片和老的分片将会并行运行， 但是在我们做切换前所有的流量还是由老的分片提供。
 
-Check the `vtctld` web UI, or the output of `kvtctl.sh ListAllTablets test`,
-to see when the tablets are ready. There should be 5 tablets in each shard.
+我们可以通过`vtctld`界面或者`kvtctl.sh ListAllTablets test`命令的输出查看tablets状态，当tablets启动成功后，每个分片应该有5个对应的tablets
 
-Once the tablets are ready, initialize replication by electing the first master
-for each of the new shards:
+一旦tablets启动成功， 我们可以通过为每个新分片选择一个主分片来初始化复制：
 
 ``` sh
 vitess/examples/kubernetes$ ./kvtctl.sh InitShardMaster -force test_keyspace/-80 test-0000000200
@@ -106,20 +85,17 @@ vitess/examples/kubernetes$ ./kvtctl.sh ListAllTablets test
 # ...
 ```
 
-## Copy data from original shard
+## 从原始分片复制数据
 
-The new tablets start out empty, so we need to copy everything from the
-original shard to the two new ones, starting with the schema:
+新的tablets开始是空的， 因此我们需要将所有内容从原始分片复制到两个新的分片上，首先就从数据库开始：
 
 ``` sh
 vitess/examples/kubernetes$ ./kvtctl.sh CopySchemaShard test_keyspace/0 test_keyspace/-80
 vitess/examples/kubernetes$ ./kvtctl.sh CopySchemaShard test_keyspace/0 test_keyspace/80-
 ```
 
-Next we copy the data. Since the amount of data to copy can be very large,
-we use a special batch process called *vtworker* to stream the data from a
-single source to multiple destinations, routing each row based on its
-*keyspace_id*:
+下面我们拷贝数据。由于要复制的数据量可能非常大，我们使用一个称作 *vtworker* 的特殊批处理程序，根据 *keyspace_id* 路由将每一行数据从
+单个源传输到多个目标。
 
 ``` sh
 vitess/examples/kubernetes$ ./sharded-vtworker.sh SplitClone test_keyspace/0
@@ -136,6 +112,7 @@ vitess/examples/kubernetes$ ./sharded-vtworker.sh SplitClone test_keyspace/0
 # pods/vtworker
 ```
 
+注意： 这里我们只指定了数据源分片 *test_keyspace/0*
 Notice that we've only specified the source shard, *test_keyspace/0*.
 The *SplitClone* process will automatically figure out which shards to use
 as the destinations based on the key range that needs to be covered.
