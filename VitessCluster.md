@@ -202,13 +202,12 @@
 
 ### 启动Vitess集群  
 
-１. 跳转到本地Vitess源代码目录
+1. 跳转到本地Vitess源代码目录  
+     经过上面的步骤后，我们就可以尝试着运行Vitess官方提供的实例了，切换到$GOPATH/src/github.com/youtube/vitess/examples/kubernetes目录下：  
 
-    经过上面的步骤后，我们就可以尝试着运行Vitess官方提供的实例了，切换到$GOPATH/src/github.com/youtube/vitess/examples/kubernetes目录下：  
-
-    ```
-    $ cd $GOPATH/src/github.com/youtube/vitess/examples/kubernetes
-    ```
+      ```
+      $ cd $GOPATH/src/github.com/youtube/vitess/examples/kubernetes
+      ```
 
 2. 修改本地配置
 
