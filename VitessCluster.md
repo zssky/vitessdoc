@@ -462,6 +462,8 @@
     通过以上操作我们现在可以通过VitessClient或者Mysql-Client访问数据库了;
 
 ## 其他
+    基础环境的搭建完全是依赖于Kubernetes，以下列出了对应的Kubernetes文档，有需要的可以根据需要进行查阅。
 
-    基础环境的搭建完全是依赖于Kubernetes，　以下列出了对应的Kubernetes文档，　有需要的可以根据需要进行查阅。
-    [测试用例](http://vitess.io/getting-started/#test-your-cluster-with-a-client-app)
+    * [Kubernetes官方文档](https://kubernetes.io/docs)
+    * [Kubernetes中文文档](https://www.kubernetes.org.cn/k8s)
+    * [测试用例](http://vitess.io/getting-started/#test-your-cluster-with-a-client-app)
