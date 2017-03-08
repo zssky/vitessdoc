@@ -13,7 +13,10 @@
   * [在Kubernetes上运行Vitess](https://github.com/davygeek/vitessdoc/blob/master/started/GettingStartedKubernetes.md)
   * [自定义Docker构建](https://github.com/zssky/vitessdoc/blob/master/started/DockerBuild.md)
   * [在本地运行Vitess](#)
-* 用户指南
+* 用户指南  
+  * [基于Kubernetes分片](https://github.com/zssky/vitessdoc/blob/master/userguide/ShardingKubernetes.md)
+
+
 * 参考指南
 * 实践心得
   * [基于minikube的kubernetes集群搭建](https://github.com/davygeek/vitessdoc/blob/master/MinikubeCluster.md)

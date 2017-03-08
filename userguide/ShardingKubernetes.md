@@ -112,33 +112,21 @@ vitess/examples/kubernetes$ ./sharded-vtworker.sh SplitClone test_keyspace/0
 # pods/vtworker
 ```
 
-注意： 这里我们只指定了数据源分片 *test_keyspace/0*
-Notice that we've only specified the source shard, *test_keyspace/0*.
-The *SplitClone* process will automatically figure out which shards to use
-as the destinations based on the key range that needs to be covered.
-In this case, shard *0* covers the entire range, so it identifies
-*-80* and *80-* as the destination shards, since they combine to cover the
-same range.
+注意： 这里我们只指定了数据源分片 *test_keyspace/0* 。 *SplitClone* 进程会根据key值覆盖和重叠范围自动判断需要访问的分片。
+本例中， 分片 *0* 覆盖整个范围， 所以可以识别 *-80* 和 *80-* 作为目标分片。因为它们结合起来覆盖范围相同；
 
-Next, it will pause replication on one *rdonly* (offline processing) tablet
-to serve as a consistent snapshot of the data. The app can continue without
-downtime, since live traffic is served by *replica* and *master* tablets,
-which are unaffected. Other batch jobs will also be unaffected, since they
-will be served only by the remaining, un-paused *rdonly* tablets.
 
-## Check filtered replication
+接下来，我们将在一个 *rdonly* tablet上暂停复制（离线处理)， 为数据一致性提供快照。 应用程序可以继续服务不停机；
+因为实时流量处理由 *replica* 和 *master* 负责响应，不会受到任何影响。 其他批处理任务同样也不会受到影响，
+因为还有一台未暂停的 *rdonly* tablets可以提供服务。
 
-Once the copy from the paused snapshot finishes, *vtworker* turns on
-[filtered replication](http://vitess.io/user-guide/sharding.html#filtered-replication)
-from the source shard to each destination shard. This allows the destination
-shards to catch up on updates that have continued to flow in from the app since
-the time of the snapshot.
+## 检查过滤复制
 
-When the destination shards are caught up, they will continue to replicate
-new updates. You can see this by looking at the contents of each shard as
-you add new messages to various pages in the Guestbook app. Shard *0* will
-see all the messages, while the new shards will only see messages for pages
-that live on that shard.
+一旦从已经暂停的快照数据复制完成， *vtworker* 会开启从源分片到每个目标分片的[过滤复制](http://vitess.io/user-guide/sharding.html#filtered-replication)
+过滤复制会从快照创建时间起，继续同步应用数据。
+
+当追赶上目标分片数据时，还会继续复制新更新。 你可以通过查看每个分片的内容来看到这个数据同步的变化， 您可以向留言板应用程序中的各个页面添加新邮件。
+分片 *0* 可以看到所有的消息， 而新的分片仅能看到分布在这个分片上的消息。
 
 ``` sh
 # See what's on shard test_keyspace/0:
@@ -149,35 +137,31 @@ vitess/examples/kubernetes$ ./kvtctl.sh ExecuteFetchAsDba test-0000000200 "SELEC
 vitess/examples/kubernetes$ ./kvtctl.sh ExecuteFetchAsDba test-0000000300 "SELECT * FROM messages"
 ```
 
-Add some messages on various pages of the Guestbook to see how they get routed.
+可以通过在Guestbook上的不同的页面上添加一些消息， 来观察他们是如何进行数据路由的。
 
-## Check copied data integrity
+## 检查复制的数据完整性
 
-The *vtworker* batch process has another mode that will compare the source
-and destination to ensure all the data is present and correct.
-The following commands will run a diff for each destination shard:
+*vtworker* 批处理有另一种模式，将比较源和目标，以确保所有数据的存在和正确。
+以下命令将在每个目标分片上校验数据差异:
 
 ``` sh
 vitess/examples/kubernetes$ ./sharded-vtworker.sh SplitDiff test_keyspace/-80
 vitess/examples/kubernetes$ ./sharded-vtworker.sh SplitDiff test_keyspace/80-
 ```
 
-If any discrepancies are found, they will be printed.
-If everything is good, you should see something like this:
+如果发现任何差异， 程序将会输出差异信息。
+如果所有检测都正常， 你将会看到如下信息:
 
 ```
 I0416 02:10:56.927313      10 split_diff.go:496] Table messages checks out (4 rows processed, 1072961 qps)
 ```
 
-## Switch over to new shards
+## 切换到新的分片
 
-Now we're ready to switch over to serving from the new shards.
-The [MigrateServedTypes](http://vitess.io/reference/vtctl.html#migrateservedtypes)
-command lets you do this one
-[tablet type](http://vitess.io/overview/concepts.html#tablet) at a time,
-and even one [cell](http://vitess.io/overview/concepts.html#cell-data-center)
-at a time. The process can be rolled back at any point *until* the master is
-switched over.
+现在，我们就可以把所有服务切换到新的分片上，由新的分片为应用提供服务。
+我们可以使用[MigrateServedTypes](http://vitess.io/reference/vtctl.html#migrateservedtypes)命令，一次迁移一
+个[cell](http://vitess.io/overview/concepts.html#cell-data-center)上的一个[tablet type](http://vitess.io/overview/concepts.html#tablet)
+在master切换完成之前，我们可以在任何点都可以进行回滚。
 
 ``` sh
 vitess/examples/kubernetes$ ./kvtctl.sh MigrateServedTypes test_keyspace/0 rdonly
@@ -185,16 +169,12 @@ vitess/examples/kubernetes$ ./kvtctl.sh MigrateServedTypes test_keyspace/0 repli
 vitess/examples/kubernetes$ ./kvtctl.sh MigrateServedTypes test_keyspace/0 master
 ```
 
-During the *master* migration, the original shard master will first stop
-accepting updates. Then the process will wait for the new shard masters to
-fully catch up on filtered replication before allowing them to begin serving.
-Since filtered replication has been following along with live updates, there
-should only be a few seconds of master unavailability.
 
-When the master traffic is migrated, the filtered replication will be stopped.
-Data updates will be visible on the new shards, but not on the original shard.
-See it for yourself: Add a message to the guestbook page and then inspect
-the database content:
+在 *master* 迁移过程中， 首先会停止老master接收更新请求； 然后进程需要等待新的分片通过过滤
+复制数据完全一直之后， 才会开启新的服务。 由于过滤复制已跟随实时更新，因此应该只有几秒钟的主机不可用。
+
+master完全钱以后就会停止过滤复制， 新分片的数据更新就会被开启， 但是老分片的更新依然是不可用。
+读者可以自己尝试下： 将消息添加到留言板页面，然后检查数据库内容
 
 ``` sh
 # See what's on shard test_keyspace/0
@@ -206,11 +186,10 @@ vitess/examples/kubernetes$ ./kvtctl.sh ExecuteFetchAsDba test-0000000200 "SELEC
 vitess/examples/kubernetes$ ./kvtctl.sh ExecuteFetchAsDba test-0000000300 "SELECT * FROM messages"
 ```
 
-## Remove original shard
+## 移除老的分片
 
-Now that all traffic is being served from the new shards, we can remove the
-original one. To do that, we use the `vttablet-down.sh` script from the
-unsharded example:
+现在，所有的服务都由新的分片进行提供， 我们可以移除老的分片。 通过运行脚本`vttablet-down.sh`关闭一组
+非拆分的分片：
 
 ``` sh
 vitess/examples/kubernetes$ ./vttablet-down.sh
@@ -220,24 +199,20 @@ vitess/examples/kubernetes$ ./vttablet-down.sh
 # ...
 ```
 
-Then we can delete the now-empty shard:
+下面我们可以删除空置分片，通过以下命令可以删除：
 
 ``` sh
 vitess/examples/kubernetes$ ./kvtctl.sh DeleteShard -recursive test_keyspace/0
 ```
 
-You should then see in the vtctld **Topology** page, or in the output of
-`kvtctl.sh ListAllTablets test` that the tablets for shard *0* are gone.
+我们通过 **Topology** 页面或者使用`kvtctl.sh ListAllTablets test`命令，发现分片 *0* 已经不存在了，
+说明我们已经成功删除了不可用的分片， 当系统中存在不可用的分片的时候就可以通过这种方式删除。
 
-## Tear down and clean up
+## 清理
 
-Before stopping the Container Engine cluster, you should tear down the Vitess
-services. Kubernetes will then take care of cleaning up any entities it created
-for those services, like external load balancers.
+在关闭容器引擎之前， 我们需要关闭Vitess服务； 然后Kubernetes会负责清理它创建的其他实体， 例如：外部负载平衡器
 
-Since you already cleaned up the tablets from the original unsharded example by
-running `./vttablet-down.sh`, that step has been replaced with
-`./sharded-vttablet-down.sh` to clean up the new sharded tablets.
+我们可以通过运行`./vttablet-down.sh`来清理非分片状态的tablets, 可以通过运行`./sharded-vttablet-down.sh`来关闭拆分状态下的tablets
 
 ``` sh
 vitess/examples/kubernetes$ ./guestbook-down.sh
@@ -245,18 +220,4 @@ vitess/examples/kubernetes$ ./vtgate-down.sh
 vitess/examples/kubernetes$ ./sharded-vttablet-down.sh
 vitess/examples/kubernetes$ ./vtctld-down.sh
 vitess/examples/kubernetes$ ./etcd-down.sh
-```
-
-Then tear down the Container Engine cluster itself, which will stop the virtual
-machines running on Compute Engine:
-
-``` sh
-$ gcloud container clusters delete example
-```
-
-It's also a good idea to remove the firewall rules you created, unless you plan
-to use them again soon:
-
-``` sh
-$ gcloud compute firewall-rules delete vtctld guestbook
 ```

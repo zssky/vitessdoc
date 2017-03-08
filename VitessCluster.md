@@ -457,9 +457,212 @@
     ```
 13. **说明**
 
-    到目前位置，我们整体的Vitess环境就搭建好了，可以使用命令连接服务进行测试，也可以自己部署对应的应用进行测试。　测试用例可以参考官方提供的[测试用例](http://vitess.io/getting-started/#test-your-cluster-with-a-client-app)。
+    到目前为止，我们整体的Vitess环境就搭建好了，可以使用命令连接服务进行测试，也可以自己部署对应的应用进行测试。　测试用例可以参考官方提供的[测试用例](http://vitess.io/getting-started/#test-your-cluster-with-a-client-app)。
 
     通过以上操作我们现在可以通过VitessClient或者Mysql-Client访问数据库了;
+
+## 数据拆分  
+
+### 配置分片信息
+  首先， 我们需要做的就是让Vitess知道我们需要怎样对数据进行分片，我们通过提供如下的VSchema配置来实现数据分片配置：
+  ``` json
+  {
+    "Sharded": true,
+    "Vindexes": {
+      "hash": {
+        "Type": "hash"
+      }
+    },
+    "Tables": {
+      "messages": {
+        "ColVindexes": [
+          {
+            "Col": "page",
+            "Name": "hash"
+          }
+        ]
+      }
+    }
+  }
+  ```
+
+  以上配置我们想通过 `page` 列的以`hash`方式来对数据进行拆分。换一种说法就是，保证相同的`page`的messages数据在同一个分片是上，但是page的分布
+  会被随机打散放置在不同的分片是上。
+
+  我们可以通过以下命令把VSchema信息应用到Vitess中：
+
+  ``` sh
+  vitess/examples/kubernetes$ ./kvtctl.sh ApplyVSchema -vschema "$(cat vschema.json)" test_keyspace
+  ```
+
+
+### 新分片tablets启动
+
+  在未分片的示例中， 我们在 *test_keyspace* 中启动了一个名称为 *0* 的分片，可以这样表示 *test_keyspace/0*。
+  现在，我们将会分别为两个不同的分片启动tablets，命名为 *test_keyspace/-80* 和 *test_keyspace/80-*:
+
+  ``` sh
+  vitess/examples/kubernetes$ ./sharded-vttablet-up.sh
+  ### example output:
+  # Creating test_keyspace.shard--80 pods in cell test...
+  # ...
+  # Creating test_keyspace.shard-80- pods in cell test...
+  # ...
+  ```
+
+  因为， Guestbook应用的拆分键是page, 这就会导致pages的数据各有一半会落在不同的分片上； *0x80* 是[拆分键范围](http://vitess.io/user-guide/sharding.html#key-ranges-and-partitions)的中点。
+  数据分片范围如下：
+  [0x00 - 0x80][0x80-0xFF]
+
+  在数据迁移过渡期间，新的分片和老的分片将会并行运行， 但是在我们正式做服务切换前所有的流量还是由老的分片提供服务。
+  我们可以通过`vtctld`web界面或者`kvtctl.sh ListAllTablets test`命令查看tablets状态，当tablets启动成功后，每个分片应该有5个对应的tablets
+  一旦tablets启动成功， 我们可以通过为每个新分片指定一个master来初始化同步复制数据：
+
+  ``` sh
+  vitess/examples/kubernetes$ ./kvtctl.sh InitShardMaster -force test_keyspace/-80 test-0000000200
+  vitess/examples/kubernetes$ ./kvtctl.sh InitShardMaster -force test_keyspace/80- test-0000000300
+  ```
+
+  现在我们应该一共存在15个tablets进程了， 可以通过以下命令查看：
+
+  ``` sh
+  vitess/examples/kubernetes$ ./kvtctl.sh ListAllTablets test
+  ### example output:
+  # test-0000000100 test_keyspace 0 master 10.64.3.4:15002 10.64.3.4:3306 []
+  # ...
+  # test-0000000200 test_keyspace -80 master 10.64.0.7:15002 10.64.0.7:3306 []
+  # ...
+  # test-0000000300 test_keyspace 80- master 10.64.0.9:15002 10.64.0.9:3306 []
+  # ...
+  ```
+
+### 数据复制
+
+  新的tablets默认都是空的， 因此我们需要将原始分片的所有数据复制到两个新的分片上，首先就从Schema开始：
+
+  ``` sh
+  vitess/examples/kubernetes$ ./kvtctl.sh CopySchemaShard test_keyspace/0 test_keyspace/-80
+  vitess/examples/kubernetes$ ./kvtctl.sh CopySchemaShard test_keyspace/0 test_keyspace/80-
+  ```
+
+  下面我们开始拷贝数据， 由于要复制的数据量可能非常大，所以我们使用一个称作 *vtworker* 的特殊批处理程序，根据 *keyspace_id* 路由将每一行数据从
+  单个源分片传输到多个目标分片。
+
+  ``` sh
+  vitess/examples/kubernetes$ ./sharded-vtworker.sh SplitClone test_keyspace/0
+  ### example output:
+  # Creating vtworker pod in cell test...
+  # pods/vtworker
+  # Following vtworker logs until termination...
+  # I0416 02:08:59.952805       9 instance.go:115] Starting worker...
+  # ...
+  # State: done
+  # Success:
+  # messages: copy done, copied 11 rows
+  # Deleting vtworker pod...
+  # pods/vtworker
+  ```
+
+  注意： 这里我们只指定了数据源分片 *test_keyspace/0* 没有指定目标分片的信息。 *SplitClone* 进程会根据key值覆盖和重叠范围自动判断需要访问的目标分片。
+  本例中， 分片 *0* 覆盖整个范围， 所以程序可以自动识别 *-80* 和 *80-* 作为目标分片。因为它们结合起来覆盖范围和 *0* 相同；
+
+
+  接下来，我们将在老分片上摘除一个 *rdonly* tablet（离线处理)， 作为数据复制一致性提供快照， 提供静态数据同步数据源。 整个服务可以继续服务不停机；
+  因为实时流量可以由 *replica* 和 *master* 负责响应处理，不会受到任何影响。 其他批处理任务同样也不会受到影响，
+  因为还有一台未暂停的 *rdonly* tablets可以提供服务。
+
+
+### 过滤复制检查
+
+  当数据从 *rdonly* tablet 复制完成后， *vtworker* 会开启从源分片到每个目标分片的[过滤复制](http://vitess.io/user-guide/sharding.html#filtered-replication)；
+  过滤复制会从快照创建时间起，继续同步应用数据。
+
+  当源分片和目标分片数据基本一直时，还会继续复制更新。 你可以通过查看每个分片的内容来看到这个数据同步的变化， 您还可以向留言板应用程序中的各个页面添加新信息，然后在分
+  片 *0* 中可以看到所有的消息， 而新的分片仅能看到分布在这个分片上的消息。
+
+  ``` sh
+  # See what's on shard test_keyspace/0:
+  vitess/examples/kubernetes$ ./kvtctl.sh ExecuteFetchAsDba test-0000000100 "SELECT * FROM messages"
+  # See what's on shard test_keyspace/-80:
+  vitess/examples/kubernetes$ ./kvtctl.sh ExecuteFetchAsDba test-0000000200 "SELECT * FROM messages"
+  # See what's on shard test_keyspace/80-:
+  vitess/examples/kubernetes$ ./kvtctl.sh ExecuteFetchAsDba test-0000000300 "SELECT * FROM messages"
+  ```
+
+  说明： 可以通过在Guestbook上的不同的页面上添加一些消息， 来观察他们是如何进行数据路由的。
+
+### 数据完整性检查
+
+  *vtworker* 批处理程序还有另一种模式，可以比较源分片和目标分片所有数据的一致性和正确性。
+  以下命令将在每个目标分片上校验数据差异:
+
+  ``` sh
+  vitess/examples/kubernetes$ ./sharded-vtworker.sh SplitDiff test_keyspace/-80
+  vitess/examples/kubernetes$ ./sharded-vtworker.sh SplitDiff test_keyspace/80-
+  ```
+
+  如果发现有任何差异， 程序将会输出差异信息。
+  如果所有检测都正常， 你将会看到如下信息:
+
+  ```
+  I0416 02:10:56.927313      10 split_diff.go:496] Table messages checks out (4 rows processed, 1072961 qps)
+  ```
+
+
+### 服务切换
+
+  现在，我们就可以把所有服务切换到新的分片上，由新的分片为应用提供服务。
+  我们可以使用[MigrateServedTypes](http://vitess.io/reference/vtctl.html#migrateservedtypes)命令，一次迁移同一
+  个[cell](http://vitess.io/overview/concepts.html#cell-data-center)上的一个[tablet type](http://vitess.io/overview/concepts.html#tablet)；
+  在master切换完成之前，在任何时候我们都可以进行数据回滚。
+
+  ``` sh
+  vitess/examples/kubernetes$ ./kvtctl.sh MigrateServedTypes test_keyspace/0 rdonly
+  vitess/examples/kubernetes$ ./kvtctl.sh MigrateServedTypes test_keyspace/0 replica
+  vitess/examples/kubernetes$ ./kvtctl.sh MigrateServedTypes test_keyspace/0 master
+  ```
+
+
+  在 *master* 迁移过程中， 首先会停止老master接收数据更新请求； 然后进程需要等待新的分片通过过滤
+  复制数据完全一致， 其次才会开启新的服务。 由于过滤复制已经确保数据实时更新，因此在切换过程中应用应该只会出现几秒钟的不可用。
+
+  master完全迁移后就会停止过滤复制， 新分片的数据更新就会被开启， 但是老分片的更新依然是不可用。
+  读者可以自己尝试下： 将消息添加到留言板页面，然后检查数据库内容是否有同步更新。
+
+  ``` sh
+  # See what's on shard test_keyspace/0
+  # (no updates visible since we migrated away from it):
+  vitess/examples/kubernetes$ ./kvtctl.sh ExecuteFetchAsDba test-0000000100 "SELECT * FROM messages"
+  # See what's on shard test_keyspace/-80:
+  vitess/examples/kubernetes$ ./kvtctl.sh ExecuteFetchAsDba test-0000000200 "SELECT * FROM messages"
+  # See what's on shard test_keyspace/80-:
+  vitess/examples/kubernetes$ ./kvtctl.sh ExecuteFetchAsDba test-0000000300 "SELECT * FROM messages"
+  ```
+
+
+
+### 老分片下线
+
+  现在，所有的服务都由新的分片进行提供， 我们可以老的分片进行下线处理，使资源可以回收利用。 通过运行脚本`vttablet-down.sh`关闭一组
+  非拆分的分片：
+
+  ``` sh
+  vitess/examples/kubernetes$ ./vttablet-down.sh
+  ### example output:
+  # Deleting pod for tablet test-0000000100...
+  # pods/vttablet-100
+  # ...
+  ```
+  通过以上命令，我们已经关闭了老分片中的服务，下面可以通过以下命令删除控制的分片信息，保证元数据一致。
+
+  ``` sh
+  vitess/examples/kubernetes$ ./kvtctl.sh DeleteShard -recursive test_keyspace/0
+  ```
+
+  我们可以通过 **Topology** 页面或者使用`kvtctl.sh ListAllTablets test`命令，来查看元数据信息， 通过运行命令发现
+  分片 *0* 已经不存在了，说明我们已经成功删除了分片 *0*， 当系统中存在不可用或者闲置的分片的时候就可以通过这种方式删除。
+
+
 
 ## 其他
     基础环境的搭建完全是依赖于Kubernetes，以下列出了对应的Kubernetes文档，有需要的可以根据需要进行查阅。
