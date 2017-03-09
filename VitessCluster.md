@@ -126,7 +126,28 @@
   ``` sh
   kubectl get namespace
   ```
+* Node的隔离与恢复
+  ``` sh
+  # 隔离Node，新创建的Pod不会在改node上创建了，但是已经创建的不会自动关闭
+  kubectl patch node xxx -p '{"spec":{"unschedulable":true}}'
 
+  # 解除Node的隔离， 可以在上面继续创建pod
+  kubectl patch node xxx -p '{"spec":{"unschedulable":true}}'
+
+  # 隔离还可以通过kubectl replace -f xxx.yaml 命令实现
+  ```
+
+* Pod添加/删除/修改Label
+  ``` sh
+  # 给pod xxx添加Lable app=vitess
+  kubectl label pod xxx app=vitess
+
+  # 删除pod xxx的Lable app
+  kubectl label pod xxx app-
+
+  # 修改pod xxx的标签
+  kubectl label pod xxx app=mysql --overwrite
+  ```
 
 ### 容器相关
 * 拉取容器镜像  
