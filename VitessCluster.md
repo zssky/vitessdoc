@@ -190,6 +190,28 @@
   $ ls -l | awk -F ' ' '{print "docker load --input="$NF}' | sh
   ```
 
+* 把docker进程保存成镜像
+  ``` sh
+  # 查询docker进程
+  $ docker ps
+  #CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
+  #9bb89f5f488b        ce3f89f83ead        "/bin/bash"         59 minutes ago      Up 59 minutes                           angry_pasteur
+
+  # 把进程9bb89f5f488b 保存成镜像
+  $ docker commit 9bb89f5f488b vitesss/bootstrap
+
+  # 查看镜像列表
+  $ docker images
+  #REPOSITORY                         TAG                 IMAGE ID            CREATED             SIZE
+  #vitesss/bootstrap                  mysql56             376ef8e4540e        4 seconds ago       2.358 GB
+  ```
+* 查询docker进程信息
+  ``` sh
+  # 查询进程信息例如ip地址或者别的信息可以使用
+  # docker inspect 9bb89f5f488b
+  $ docker inspect <CONTAINERID>
+  ```
+
 ## Vitess部署
 
   本文假定用户已经具备[本地部署Vitess](http://vitess.io/getting-started/local-instance.html)的经验，需要将Vitess部署在Kubernetes，所以对于相关的环境依赖就不在做过多的说明；　如果有不明白的地方请先参阅官方文档。
