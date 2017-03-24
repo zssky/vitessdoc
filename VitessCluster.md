@@ -149,6 +149,13 @@
   kubectl label pod xxx app=mysql --overwrite
   ```
 
+* 查看Pod日志
+  ``` sh
+  # 查看Pod下对应容器的日志， 使用-f可以直接监听文件变化
+  $ kubectl logs -f <POD_NAME> -c <CONTAINER_NAME>
+  ```
+
+
 ### 容器相关
 * 拉取容器镜像  
   ``` sh
