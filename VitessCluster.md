@@ -156,9 +156,9 @@
   ```
 * 查看Pod之前状态
   ``` sh
-  # 如果容器被kill的话可以通过以下命令查看容器关闭的原因，比如oom这类就可以查看
-  $kubectl get pod -o go-template='{{range.status.containerStatuses}}{{"Container Name: "}}{{.name}}{{"\r\nLastState: "}}{{.lastState}}{{end}}'  simmemleak-60xbc
-  ```
+  # 如果容器被kill的话可以通过以下命令查看容器关闭的原因，比如oom这类就可以查看
+  $ kubectl get pod -o go-template='{{range.status.containerStatuses}}{{"Container Name: "}}{{.name}}{{"\r\nLastState: "}}{{.lastState}}{{end}}'  simmemleak-60xbc
+  ``` 
 
 ### 容器相关
 * 拉取容器镜像  
